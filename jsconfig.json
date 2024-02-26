@@ -1,0 +1,14 @@
+{
+    "compilerOptions": {
+        "target": "es2015",
+        "lib": ["dom", "es2015", "es2017.object"],
+        "checkJs": true,
+        "strict": true,
+        "noImplicitAny": false,
+        "noImplicitThis": false,
+        "noImplicitReturns": false,
+        "moduleResolution": "node",
+        "baseUrl": "."
+    },
+    "exclude": ["build"]
+}
