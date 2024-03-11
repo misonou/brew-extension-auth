@@ -2,15 +2,17 @@
   "name": "@misonou/brew-extension-auth",
   "version": "0.1.0",
   "description": "",
-  "main": "src/index.js",
   "type": "module",
+  "main": "src/index.js",
+  "types": "src/index.d.ts",
+  "unpkg": "dist/brew-auth.min.js",
   "author": "misonou",
   "license": "ISC",
   "repository": "github:misonou/brew-extension-auth",
   "homepage": "https://misonou.github.io",
   "dependencies": {
-    "brew-js": "^0.6.2",
-    "zeta-dom": "^0.5.1"
+    "brew-js": ">=0.6.2",
+    "zeta-dom": ">=0.5.1"
   },
   "peerDependencies": {
     "@azure/msal-browser": "^3.10.0"
@@ -21,11 +23,13 @@
     }
   },
   "devDependencies": {
-    "@types/axios": "^0.14.0",
-    "ncp": "^2.0.0",
-    "webpack": "^5.90.3"
+    "@misonou/build-utils": "^1.1.1",
+    "@types/axios": "^0.14.0"
   },
+  "sideEffects": [],
   "scripts": {
-    "release": "node ./npm-publish.cjs"
+    "build": "webpack",
+    "version": "npm run build && git add -A dist",
+    "release": "npx @misonou/build-utils publish"
   }
 }
