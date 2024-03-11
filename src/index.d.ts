@@ -7,6 +7,7 @@ export type * from "./provider";
 
 export default Auth;
 export * from "./middleware";
+export * from "./util";
 
 export {
     AuthError,

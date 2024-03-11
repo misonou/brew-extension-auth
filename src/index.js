@@ -4,6 +4,7 @@ import AuthProvider from "./provider.js";
 
 export default Auth;
 export * from "./middleware.js";
+export * from "./util.js";
 
 export {
     AuthError,
