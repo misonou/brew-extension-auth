@@ -8,7 +8,10 @@
         "noImplicitThis": false,
         "noImplicitReturns": false,
         "moduleResolution": "node",
-        "baseUrl": "."
+        "baseUrl": ".",
+        "paths": {
+            "@misonou/brew-extension-auth": ["."]
+        }
     },
     "exclude": ["build"]
 }
