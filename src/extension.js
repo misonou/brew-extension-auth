@@ -1,6 +1,6 @@
 import { addExtension } from "brew-js/app";
 import { combinePath } from "brew-js/util/path";
-import { always, catchAsync, defineObservableProperty, errorWithCode, extend, isFunction, makeArray, makeAsync, mapRemove, pick, pipe, reject, resolve, resolveAll, throws } from "zeta-dom/util";
+import { catchAsync, defineObservableProperty, errorWithCode, extend, isFunction, makeArray, makeAsync, mapRemove, pick, pipe, reject, resolve, resolveAll, throws } from "zeta-dom/util";
 import { reportError } from "zeta-dom/dom";
 import * as AuthError from "./errorCode.js";
 
@@ -23,7 +23,10 @@ export default addExtension('auth', ['router'], function (app, options) {
             redirectUri: redirectUri,
             revokeSession: function (accountId) {
                 if (currentProvider === provider && (!accountId || currentResult.accountId === accountId)) {
-                    always(app.emit('sessionEnded'), handleLogout);
+                    currentProvider = null;
+                    if (!app.emit('sessionEnded')) {
+                        handleLogout();
+                    }
                 }
             }
         };
@@ -141,7 +144,7 @@ export default addExtension('auth', ['router'], function (app, options) {
         },
         logout: function (params) {
             if (!currentProvider) {
-                return resolve();
+                return resolve(handleLogout());
             }
             params = params || {};
             setSessionState('', params.returnPath || options.postLogoutPath || app.path);
