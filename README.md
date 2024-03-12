@@ -3,10 +3,10 @@
 This is a preview extension for single sign-on in [brew.js](https://www.npmjs.com/package/brew-js) application.
 
 Currently supported single sign-on providers:
+- Password authentication using fetch
 - MSAL.js (Microsoft Entra ID)
 
 Working on:
-- platform-dependent password login using fetch
 - generic OAuth2 client
 
 ## Usage
@@ -161,6 +161,23 @@ createAxiosMiddleware(app)(client);
 
 ## Providers
 
+### Password authentication using fetch
+
+Now it is easily implementable with `AuthProvider` and `JSONClient`.
+
+Examples are in use [`src/examples`](https://github.com/misonou/brew-extension-auth/tree/master/src/examples) folder.
+
+```typescript
+import { AuthProvider } from "@misonou/brew-extension-auth";
+
+app.useAuth({
+    providers: [
+        AuthProvider.from('my', new MyClient())
+    ],
+    // ...
+});
+```
+
 ### MSAL.js
 
 > Requires to install [`@azure/msal-browser`](https://www.npmjs.com/package/@azure/msal-browser).
@@ -197,4 +214,27 @@ import MsalAuthProvider from "@misonou/brew-extension-auth/msal";
 MsalAuthProvider.create('microsoft',
     new PublicClientApplication({ /* ... */ }),
     { scopes: ['openid', 'profile'] });
+```
+
+## Using UMD distribution
+
+Here is an example on how to include and access exported members in UMD environment:
+
+```html
+<!-- dependencies (not showing all) -->
+<script src="https://unkpg.com/brew-js"></script>
+<!-- main extension -->
+<script src="https://unkpg.com/@misonou/brew-extension-auth"></script>
+<!-- MSAL provider -->
+<script src="https://unpkg.com/@misonou/brew-extension-auth/dist/brew-auth-msal.min.js"></script>
+
+<script>
+brew.with(brew.Auth)(app => {
+    // access MSAL provider factory
+    brew.Auth.MsalAuthProvider.create(/* ... */)
+
+    // access middleware
+    brew.Auth.createFetchMiddleware(app)
+});
+</script>
 ```
