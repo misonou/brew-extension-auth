@@ -1,4 +1,4 @@
-/*! @misonou/brew-extension-auth v0.2.0 | (c) misonou | https://misonou.github.io */
+/*! @misonou/brew-extension-auth v0.2.1 | (c) misonou | https://misonou.github.io */
 (function webpackUniversalModuleDefinition(root, factory) {
 	if(typeof exports === 'object' && typeof module === 'object')
 		module.exports = factory(require("brew-js"), require("zeta-dom"));
