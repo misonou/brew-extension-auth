@@ -86,8 +86,10 @@ function createProvider(key, client, options) {
                 }
             });
             return client.initialize().then(function () {
+                return client.handleRedirectPromise();
+            }).then(function (result) {
                 var account = client.getActiveAccount();
-                return account ? refresh({ account }, context) : client.handleRedirectPromise();
+                return result || (account && refresh({ account }, context));
             }).then(handleResult);
         },
         login: function (params, context) {
