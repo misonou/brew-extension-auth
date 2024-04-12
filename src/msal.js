@@ -90,7 +90,9 @@ function createProvider(key, client, options) {
             }).then(function (result) {
                 var account = client.getActiveAccount();
                 return result || (account && refresh({ account }, context));
-            }).then(handleResult);
+            }).then(handleResult, function () {
+                client.setActiveAccount(null);
+            });
         },
         login: function (params, context) {
             var request = {
