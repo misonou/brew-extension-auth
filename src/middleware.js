@@ -1,5 +1,7 @@
 import { is, isFunction, mapRemove, reject } from "zeta-dom/util";
 
+const HEADER_AUTHORIZATION = 'authorization';
+
 function retryOrEnd(acquireToken, response, retryable, callback, onError) {
     return retryable && response && response.status === 401 ? acquireToken(true).then(callback, onError) : onError();
 }
@@ -9,11 +11,14 @@ function fetchMiddleware(acquireToken, request, next) {
         return fetchMiddleware(acquireToken, new Request(request, next));
     }
     next = next || window.fetch;
+    if (request.headers.has(HEADER_AUTHORIZATION)) {
+        return next(request);
+    }
     return acquireToken(function execute(accessToken, retryable) {
         var req = request;
         if (accessToken) {
             req = req.clone();
-            req.headers.set('authorization', 'Bearer ' + accessToken);
+            req.headers.set(HEADER_AUTHORIZATION, 'Bearer ' + accessToken);
         }
         return next(req).then(function (response) {
             return retryOrEnd(acquireToken, response, retryable, execute, function () {
@@ -26,13 +31,16 @@ function fetchMiddleware(acquireToken, request, next) {
 function axiosMiddleware(acquireToken, axios) {
     var handled = new WeakMap();
     var withBearerToken = function (config, accessToken) {
-        config.headers.authorization = 'Bearer ' + accessToken;
+        config.headers[HEADER_AUTHORIZATION] = 'Bearer ' + accessToken;
         return config;
     };
     axios.interceptors.request.use(function (config) {
         if (mapRemove(handled, config)) {
             // refreshed access token is already set in error interceptors
             // flag is removed from map to avoid recursion
+            return config;
+        }
+        if (config.headers[HEADER_AUTHORIZATION]) {
             return config;
         }
         return acquireToken(function (accessToken, retryable) {
