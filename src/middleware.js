@@ -6,12 +6,12 @@ function retryOrEnd(acquireToken, response, retryable, callback, onError) {
     return retryable && response && response.status === 401 ? acquireToken(true).then(callback, onError) : onError();
 }
 
-function fetchMiddleware(acquireToken, request, next) {
+function fetchMiddleware(acquireToken, filter, request, next) {
     if (!is(request, Request) || (next && !isFunction(next))) {
-        return fetchMiddleware(acquireToken, new Request(request, next));
+        return fetchMiddleware(acquireToken, filter, new Request(request, next));
     }
     next = next || window.fetch;
-    if (request.headers.has(HEADER_AUTHORIZATION)) {
+    if ((filter && !filter(request)) || request.headers.has(HEADER_AUTHORIZATION)) {
         return next(request);
     }
     return acquireToken(function execute(accessToken, retryable) {
@@ -28,7 +28,7 @@ function fetchMiddleware(acquireToken, request, next) {
     });
 }
 
-function axiosMiddleware(acquireToken, axios) {
+function axiosMiddleware(acquireToken, filter, axios) {
     var handled = new WeakMap();
     var withBearerToken = function (config, accessToken) {
         config.headers[HEADER_AUTHORIZATION] = 'Bearer ' + accessToken;
@@ -40,7 +40,7 @@ function axiosMiddleware(acquireToken, axios) {
             // flag is removed from map to avoid recursion
             return config;
         }
-        if (config.headers[HEADER_AUTHORIZATION]) {
+        if ((filter && !filter(config)) || config.headers[HEADER_AUTHORIZATION]) {
             return config;
         }
         return acquireToken(function (accessToken, retryable) {
@@ -59,10 +59,10 @@ function axiosMiddleware(acquireToken, axios) {
     return axios;
 }
 
-export function createFetchMiddleware(app) {
-    return fetchMiddleware.bind(0, app.acquireToken);
+export function createFetchMiddleware(app, filter) {
+    return fetchMiddleware.bind(0, app.acquireToken, filter);
 }
 
-export function createAxiosMiddleware(app) {
-    return axiosMiddleware.bind(0, app.acquireToken);
+export function createAxiosMiddleware(app, filter) {
+    return axiosMiddleware.bind(0, app.acquireToken, filter);
 }
