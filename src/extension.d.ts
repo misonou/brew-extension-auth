@@ -178,6 +178,16 @@ export interface AuthProviderHint {
      */
     provider?: string;
     /**
+     * Authentication method used by the provider, to determine which authentication provider should be used when `provider` is not specified.
+     * See {@link AuthProviderInfo.authType}.
+     */
+    authType?: AuthType;
+    /**
+     * Type of provider, to determine which authentication provider should be used when `provider` is not specified.
+     * See {@link AuthProviderInfo.providerType}.
+     */
+    providerType?: string;
+    /**
      * Login hint, usually user email, to determine which authentication provider should be used when `provider` is not specified.
      * Supplied value will be passed to authentication provider.
      */

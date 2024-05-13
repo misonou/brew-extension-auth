@@ -36,22 +36,29 @@ export default addExtension('auth', ['router'], function (app, options) {
         });
     }
 
+    function filterByProp(arr, key, value) {
+        return value === undefined ? arr : arr.filter(function (v) {
+            return v[key] === value;
+        });
+    }
+
     function findProvider(params) {
         if (params.provider) {
-            return providers.find(function (v) {
-                return v.key === params.provider;
-            });
+            return filterByProp(providers, 'key', params.provider)[0];
         }
+        var matched = providers;
+        matched = filterByProp(matched, 'authType', params.authType);
+        matched = filterByProp(matched, 'providerType', params.providerType);
         if (params.loginHint) {
             return resolve(0).then(function next(index) {
-                var provider = providers[index];
+                var provider = matched[index];
                 return provider && resolve(provider.isHandleable(params.loginHint)).then(function (v) {
                     return v ? provider : next(index + 1);
                 });
             });
         }
-        if (!providers[1]) {
-            return providers[0];
+        if (!matched[1]) {
+            return matched[0];
         }
     }
 
