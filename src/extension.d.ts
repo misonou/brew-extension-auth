@@ -172,6 +172,35 @@ export interface AuthOptions<TProviders extends readonly AuthProvider[], TUser =
     resolveUser: ResolveUserCallback<Zeta.ArrayMember<TProviders>, TUser>;
 }
 
+export type AuthSingleProviderOptions<TProvider extends AuthProvider, TUser> =
+    TProvider extends AuthProvider<any, TUser> ? AuthSimpleOptions<TProvider, TUser> :
+    AuthSimpleOptionsWithResolve<TProvider, TUser>;
+
+type CommonOptions = Pick<AuthOptions<any>, 'interaction' | 'postLoginPath' | 'postLogoutPath'>;
+
+interface AuthSimpleOptions<TProvider extends AuthProvider, TUser> extends CommonOptions {
+    /**
+     * An authentication provider.
+     */
+    provider: TProvider;
+    /**
+     * Gather information about current user which will be exposed as {@link AuthContext.user}.
+     * If callback is not given, {@link AuthContext.user} will return to account object returned by the provider.
+     */
+    resolveUser?: ResolveUserCallback<TProvider, TUser>;
+}
+
+interface AuthSimpleOptionsWithResolve<TProvider extends AuthProvider, TUser> extends CommonOptions {
+    /**
+     * An authentication provider.
+     */
+    provider: TProvider;
+    /**
+     * Gather information about current user which will be exposed as {@link AuthContext.user}.
+     */
+    resolveUser: ResolveUserCallback<TProvider, TUser>;
+}
+
 export interface AuthProviderHint {
     /**
      * A string as the key to identify which authentication provider should be used.
@@ -258,6 +287,11 @@ export interface AuthContext<TUser = any> extends Brew.EventDispatcher<keyof Aut
      * @param options A dictionary containing options.
      */
     useAuth<TProviders extends readonly AuthProvider[]>(options: AuthOptions<TProviders, TUser>): void;
+    /**
+     * Initialize the extension.
+     * @param options A dictionary containing options.
+     */
+    useAuth<TProvider extends AuthProvider>(options: AuthSingleProviderOptions<TProvider, TUser>): void;
 }
 
 declare const Auth: AuthExtension<any>;

@@ -8,7 +8,7 @@ const CACHE_KEY = 'brew.auth';
 
 export default addExtension('auth', ['router'], function (app, options) {
     var setUser = defineObservableProperty(app, 'user', null, true);
-    var providers = makeArray(options.providers);
+    var providers = makeArray(options.providers || options.provider);
     var providerParams = {
         interaction: options.interaction || 'redirect',
     };
@@ -81,7 +81,7 @@ export default addExtension('auth', ['router'], function (app, options) {
         };
         currentProvider = provider;
         currentResult = result;
-        return makeAsync(options.resolveUser)(data).then(function (user) {
+        return (options.resolveUser ? makeAsync(options.resolveUser)(data) : resolve(data.account)).then(function (user) {
             setUser(user);
             popSessionState(provider.key);
             app.emit('login', { user });
