@@ -1,4 +1,4 @@
-import { is, isFunction, mapRemove, reject } from "zeta-dom/util";
+import { is, isFunction, reject } from "zeta-dom/util";
 
 const HEADER_AUTHORIZATION = 'authorization';
 
@@ -35,11 +35,6 @@ function axiosMiddleware(acquireToken, filter, axios) {
         return config;
     };
     axios.interceptors.request.use(function (config) {
-        if (mapRemove(handled, config)) {
-            // refreshed access token is already set in error interceptors
-            // flag is removed from map to avoid recursion
-            return config;
-        }
         if ((filter && !filter(config)) || config.headers[HEADER_AUTHORIZATION]) {
             return config;
         }
@@ -51,7 +46,7 @@ function axiosMiddleware(acquireToken, filter, axios) {
     axios.interceptors.response.use(undefined, function (error) {
         error = error || {};
         return retryOrEnd(acquireToken, error.response, handled.get(error.config), function (accessToken) {
-            return axios(withBearerToken(error.config, accessToken));
+            return axios.create()(withBearerToken(error.config, accessToken));
         }, function () {
             return reject(error);
         });
