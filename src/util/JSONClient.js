@@ -26,7 +26,7 @@ function fetchJSON(request, next) {
                 // assume empty for non-JSON response with 2xx status
                 return null;
             }
-            throw e;
+            throw errorWithCode(BrewError.apiError, '', { error: e });
         });
     });
 }
