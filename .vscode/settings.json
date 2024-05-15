@@ -1,0 +1,8 @@
+{
+    "jshint.enable": false,
+    "editor.tabSize": 4,
+    "editor.detectIndentation": false,
+    "files.insertFinalNewline": true,
+    "files.trimTrailingWhitespace": true,
+    "jestrunner.jestCommand": "npm run test --"
+}

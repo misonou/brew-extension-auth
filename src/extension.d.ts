@@ -100,7 +100,7 @@ export interface AuthProviderInfo {
     readonly providerType: string;
 }
 
-export interface AuthProvider<K = string, T = any> extends AuthProviderInfo {
+export interface AuthProvider<K extends string = string, T = any> extends AuthProviderInfo {
     readonly providerType: K;
 
     /**

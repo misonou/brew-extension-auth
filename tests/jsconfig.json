@@ -1,0 +1,12 @@
+{
+    "extends": "../jsconfig",
+    "compilerOptions": {
+        "module": "esnext",
+        "moduleResolution": "node",
+        "types": [
+            "brew-js",
+            "zeta-dom",
+            "jest"
+        ]
+    }
+}

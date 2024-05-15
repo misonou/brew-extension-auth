@@ -1,0 +1,17 @@
+{
+    "compilerOptions": {
+        "esModuleInterop": true,
+        "lib": ["ES2015"],
+        "strict": true,
+        "noImplicitAny": false,
+        "noImplicitThis": false,
+        "noImplicitReturns": false,
+        "types": [
+            "jquery",
+            "jq-scrollable",
+            "zeta-dom",
+            "brew-js"
+        ]
+    },
+    "exclude": ["build", "node_modules"]
+}
