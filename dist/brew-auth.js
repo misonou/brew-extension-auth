@@ -1,4 +1,4 @@
-/*! @misonou/brew-extension-auth v0.2.1 | (c) misonou | https://misonou.github.io */
+/*! @misonou/brew-extension-auth v0.3.0 | (c) misonou | https://misonou.github.io */
 (function webpackUniversalModuleDefinition(root, factory) {
 	if(typeof exports === 'object' && typeof module === 'object')
 		module.exports = factory(require("brew-js"), require("zeta-dom"));
@@ -164,7 +164,7 @@ var invalidCredential = 'brew/auth-invalid-credential';
 var CACHE_KEY = 'brew.auth';
 /* harmony default export */ var extension = (addExtension('auth', ['router'], function (app, options) {
   var setUser = defineObservableProperty(app, 'user', null, true);
-  var providers = makeArray(options.providers);
+  var providers = makeArray(options.providers || options.provider);
   var providerParams = {
     interaction: options.interaction || 'redirect'
   };
@@ -190,22 +190,28 @@ var CACHE_KEY = 'brew.auth';
       reportError(e);
     });
   }
+  function filterByProp(arr, key, value) {
+    return value === undefined ? arr : arr.filter(function (v) {
+      return v[key] === value;
+    });
+  }
   function findProvider(params) {
     if (params.provider) {
-      return providers.find(function (v) {
-        return v.key === params.provider;
-      });
+      return filterByProp(providers, 'key', params.provider)[0];
     }
+    var matched = providers;
+    matched = filterByProp(matched, 'authType', params.authType);
+    matched = filterByProp(matched, 'providerType', params.providerType);
     if (params.loginHint) {
       return resolve(0).then(function next(index) {
-        var provider = providers[index];
+        var provider = matched[index];
         return provider && resolve(provider.isHandleable(params.loginHint)).then(function (v) {
           return v ? provider : next(index + 1);
         });
       });
     }
-    if (!providers[1]) {
-      return providers[0];
+    if (!matched[1]) {
+      return matched[0];
     }
   }
   function setSessionState(provider, returnPath) {
@@ -228,7 +234,7 @@ var CACHE_KEY = 'brew.auth';
     };
     currentProvider = provider;
     currentResult = result;
-    return makeAsync(options.resolveUser)(data).then(function (user) {
+    return (options.resolveUser ? makeAsync(options.resolveUser)(data) : resolve(data.account)).then(function (user) {
       setUser(user);
       popSessionState(provider.key);
       app.emit('login', {
@@ -377,19 +383,23 @@ var AuthProvider = {
 /* harmony default export */ var provider = (AuthProvider);
 ;// CONCATENATED MODULE: ./src/middleware.js
 
+var HEADER_AUTHORIZATION = 'authorization';
 function retryOrEnd(acquireToken, response, retryable, callback, onError) {
   return retryable && response && response.status === 401 ? acquireToken(true).then(callback, onError) : onError();
 }
-function fetchMiddleware(acquireToken, request, next) {
+function fetchMiddleware(acquireToken, filter, request, next) {
   if (!is(request, Request) || next && !isFunction(next)) {
-    return fetchMiddleware(acquireToken, new Request(request, next));
+    return fetchMiddleware(acquireToken, filter, new Request(request, next));
   }
   next = next || window.fetch;
+  if (filter && !filter(request) || request.headers.has(HEADER_AUTHORIZATION)) {
+    return next(request);
+  }
   return acquireToken(function execute(accessToken, retryable) {
     var req = request;
     if (accessToken) {
       req = req.clone();
-      req.headers.set('authorization', 'Bearer ' + accessToken);
+      req.headers.set(HEADER_AUTHORIZATION, 'Bearer ' + accessToken);
     }
     return next(req).then(function (response) {
       return retryOrEnd(acquireToken, response, retryable, execute, function () {
@@ -398,16 +408,14 @@ function fetchMiddleware(acquireToken, request, next) {
     });
   });
 }
-function axiosMiddleware(acquireToken, axios) {
+function axiosMiddleware(acquireToken, filter, axios) {
   var handled = new WeakMap();
   var withBearerToken = function withBearerToken(config, accessToken) {
-    config.headers.authorization = 'Bearer ' + accessToken;
+    config.headers[HEADER_AUTHORIZATION] = 'Bearer ' + accessToken;
     return config;
   };
   axios.interceptors.request.use(function (config) {
-    if (mapRemove(handled, config)) {
-      // refreshed access token is already set in error interceptors
-      // flag is removed from map to avoid recursion
+    if (filter && !filter(config) || config.headers[HEADER_AUTHORIZATION]) {
       return config;
     }
     return acquireToken(function (accessToken, retryable) {
@@ -418,18 +426,18 @@ function axiosMiddleware(acquireToken, axios) {
   axios.interceptors.response.use(undefined, function (error) {
     error = error || {};
     return retryOrEnd(acquireToken, error.response, handled.get(error.config), function (accessToken) {
-      return axios(withBearerToken(error.config, accessToken));
+      return axios.create()(withBearerToken(error.config, accessToken));
     }, function () {
       return reject(error);
     });
   });
   return axios;
 }
-function createFetchMiddleware(app) {
-  return fetchMiddleware.bind(0, app.acquireToken);
+function createFetchMiddleware(app, filter) {
+  return fetchMiddleware.bind(0, app.acquireToken, filter);
 }
-function createAxiosMiddleware(app) {
-  return axiosMiddleware.bind(0, app.acquireToken);
+function createAxiosMiddleware(app, filter) {
+  return axiosMiddleware.bind(0, app.acquireToken, filter);
 }
 ;// CONCATENATED MODULE: ./|umd|/brew-js/errorCode.js
 
@@ -465,7 +473,9 @@ function fetchJSON(request, next) {
         // assume empty for non-JSON response with 2xx status
         return null;
       }
-      throw e;
+      throw errorWithCode(apiError, '', {
+        error: e
+      });
     });
   });
 }
