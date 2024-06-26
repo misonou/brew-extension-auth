@@ -13,20 +13,25 @@ function getOptionsWithBody(method, body, options) {
     });
 }
 
+function handleResult(response, data, error) {
+    if (response.ok) {
+        return data;
+    }
+    throw errorWithCode(BrewError.apiError, '', {
+        data: data,
+        error: error || null,
+        status: response.status
+    });
+}
+
 function fetchJSON(request, next) {
     request.headers.set('accept', 'application/json');
     return (next || fetch)(request).then(function (response) {
         return response.json().then(function (data) {
-            if (response.ok) {
-                return data;
-            }
-            throw errorWithCode(BrewError.apiError, '', { data });
+            return handleResult(response, data);
         }, function (e) {
-            if (response.ok) {
-                // assume empty for non-JSON response with 2xx status
-                return null;
-            }
-            throw errorWithCode(BrewError.apiError, '', { error: e });
+            // assume empty for non-JSON response with 2xx status
+            return handleResult(response, null, e);
         });
     });
 }

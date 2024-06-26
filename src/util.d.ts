@@ -1,5 +1,7 @@
-import JSONClient from "./util/JSONClient";
+import JSONClient, { JSONRequestError, JSONRequestMiddleware } from "./util/JSONClient";
 
 export {
-    JSONClient
+    JSONClient,
+    JSONRequestError,
+    JSONRequestMiddleware
 }

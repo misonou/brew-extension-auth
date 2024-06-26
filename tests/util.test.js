@@ -60,10 +60,10 @@ describe('JSONClient', () => {
 
     it('should throw error if response is not ok', async () => {
         fetch.mockResolvedValueOnce(new Response('{"error":"foo"}', { status: 500 }));
-        await expect(client.get('/a')).rejects.toBeErrorWithCode('brew/api-error');
+        await expect(client.get('/a')).rejects.toBeErrorWithCode('brew/api-error', { status: 500, data: { error: 'foo' } });
 
         fetch.mockResolvedValueOnce(new Response('xxx', { status: 500 }));
-        await expect(client.get('/a')).rejects.toBeErrorWithCode('brew/api-error');
+        await expect(client.get('/a')).rejects.toBeErrorWithCode('brew/api-error', { status: 500, data: null });
     });
 
     it('should not throw if response is not a valid JSON', async () => {

@@ -1,5 +1,23 @@
 export type JSONRequestMiddleware = (request: Request, next: (request: Request) => Promise<any>) => Promise<any>;
 
+/**
+ * Error thrown from {@link JSONClient} by default, which can be intercepted using middleware.
+ */
+export interface JSONRequestError extends Error {
+    /**
+     * Gets the HTTP status code responded from server.
+     */
+    readonly status: number;
+    /**
+     * Gets data parsed from response body; or `null` when body is not a valid JSON document.
+     */
+    readonly data: any;
+    /**
+     * Gets error thrown when parsing response body; or `null` when body is parsed successfully.
+     */
+    readonly error: Error | null;
+}
+
 export default class JSONClient {
     constructor(baseUrl: string, middleware?: JSONRequestMiddleware);
 
