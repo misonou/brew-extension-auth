@@ -4,7 +4,7 @@ import Auth from "src/extension";
 import * as ErrorCode from "src/errorCode";
 import { _, cleanup, mockFn, verifyCalls, cloneMockResult } from "@misonou/test-utils";
 import { waitFor } from "@testing-library/dom";
-import { catchAsync } from "zeta-dom/util";
+import { catchAsync, errorWithCode } from "zeta-dom/util";
 import dom from "zeta-dom/dom";
 import { jest } from "@jest/globals";
 import { createProvider, getAccessToken, providerResult } from "./harness/providers";
@@ -32,6 +32,7 @@ let initError;
 beforeAll(async () => {
     const onerror = mockFn();
     dom.on('error', onerror);
+    providers[1].init.mockRejectedValue(errorWithCode(ErrorCode.invalidCredential));
     providers[2].init.mockRejectedValue(new Error());
 
     app = brew.with(Router, Auth)(app => {

@@ -1,6 +1,6 @@
 import { addExtension } from "brew-js/app";
 import { combinePath } from "brew-js/util/path";
-import { catchAsync, defineObservableProperty, errorWithCode, extend, isFunction, makeArray, makeAsync, mapRemove, pick, pipe, reject, resolve, resolveAll, throws } from "zeta-dom/util";
+import { catchAsync, defineObservableProperty, errorWithCode, extend, isErrorWithCode, isFunction, makeArray, makeAsync, mapRemove, pick, pipe, reject, resolve, resolveAll, throws } from "zeta-dom/util";
 import { reportError } from "zeta-dom/dom";
 import * as AuthError from "./errorCode.js";
 
@@ -32,7 +32,9 @@ export default addExtension('auth', ['router'], function (app, options) {
         };
         contexts.set(provider, context);
         return resolve(provider.init(context)).catch(function (e) {
-            reportError(e);
+            if (!isErrorWithCode(e, AuthError.invalidCredential)) {
+                reportError(e);
+            }
         });
     }
 
