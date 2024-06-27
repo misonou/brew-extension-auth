@@ -1,19 +1,41 @@
 import { Extension } from "brew-js/core";
 
 export type AuthExtension<T> = Extension<AuthContext<T>>;
+export type AuthEvent<TUser> = AuthLoginEvent<TUser> | AuthLogoutEvent<TUser>;
 export type AuthType = 'password' | 'federated' | 'publicKey';
 export type ResolveUserCallback<TProvider, TUser> = (context: TProvider extends AuthProvider<infer K, infer T> ? AuthResult<K, T> : AuthResult) => TUser | Promise<TUser>;
 
-export interface AuthEvent<TUser> extends Zeta.ZetaEventBase {
+export interface AuthLoginEvent<TUser> extends Zeta.ZetaEventBase {
     /**
-     * Gets the user that is currently or has been logged in.
+     * Gets the user that is currently logged in.
      */
     readonly user: TUser;
+    /**
+     * Gets whether the user has been logged in in the same browser session.
+     * It is always `false` when `login` event is not fired on app start.
+     */
+    readonly sessionResumed: boolean;
+    /**
+     * Gets whether the a different user was logged in in the same browser session.
+     * It is always `false` when `login` event is not fired on app start.
+     */
+    readonly sessionChanged: boolean;
+}
+
+export interface AuthLogoutEvent<TUser> extends Zeta.ZetaEventBase {
+    /**
+     * Gets the user that was logged in.
+     *
+     * Note that `null` is returned when `logout` event is fired on app start, in case like
+     * user is logged out through external page and is then redirected back; or
+     * previous session is expired at the time current page is loaded.
+     */
+    readonly user: TUser | null;
 }
 
 export interface AuthEventMap<TUser> {
-    login: AuthEvent<TUser>;
-    logout: AuthEvent<TUser>;
+    login: AuthLoginEvent<TUser>;
+    logout: AuthLogoutEvent<TUser>;
     sessionEnded: Zeta.ZetaAsyncHandleableEvent;
 }
 

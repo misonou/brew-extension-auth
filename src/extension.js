@@ -15,6 +15,7 @@ export default addExtension('auth', ['router'], function (app, options) {
     var contexts = new Map();
     var redirectUri = combinePath(location.origin, app.toHref('/'));
     var sessionCache = app.cache;
+    var previousState = sessionCache.get(CACHE_KEY) || {};
     var currentProvider;
     var currentResult;
 
@@ -68,14 +69,18 @@ export default addExtension('auth', ['router'], function (app, options) {
         sessionCache.set(CACHE_KEY, { provider, returnPath });
     }
 
-    function popSessionState(provider) {
+    function popSessionState(provider, accountId) {
         var state = mapRemove(sessionCache, CACHE_KEY) || {};
-        if (state.provider === provider) {
+        if (state.provider === provider && state.returnPath) {
             catchAsync(app.navigate(state.returnPath));
+        }
+        if (provider) {
+            sessionCache.set(CACHE_KEY, { provider, accountId });
         }
     }
 
     function handleLogin(provider, result) {
+        var resumed = previousState.provider === provider.key && previousState.accountId === result.accountId;
         var data = {
             provider: provider.key,
             providerType: provider.providerType,
@@ -85,8 +90,13 @@ export default addExtension('auth', ['router'], function (app, options) {
         currentResult = result;
         return (options.resolveUser ? makeAsync(options.resolveUser)(data) : resolve(data.account)).then(function (user) {
             setUser(user);
-            popSessionState(provider.key);
-            app.emit('login', { user });
+            popSessionState(provider.key, result.accountId);
+            app.emit('login', {
+                user: user,
+                sessionResumed: resumed,
+                sessionChanged: !resumed && !!previousState.accountId
+            });
+            previousState = {};
         }, function (error) {
             handleLogout();
             throw error;
@@ -99,9 +109,10 @@ export default addExtension('auth', ['router'], function (app, options) {
         currentResult = null;
         setUser(null);
         popSessionState('');
-        if (user) {
+        if (user || previousState.accountId) {
             app.emit('logout', { user });
         }
+        previousState = {};
     }
 
     function callProvider(provider, method, params, callback) {
@@ -166,7 +177,7 @@ export default addExtension('auth', ['router'], function (app, options) {
 
     app.beforeInit(function () {
         return resolveAll(providers.map(initProvider), function (results) {
-            var index = providers.indexOf(findProvider(sessionCache.get(CACHE_KEY) || {}));
+            var index = providers.indexOf(findProvider(previousState));
             if (!results[index]) {
                 index = results.findIndex(pipe);
             }

@@ -3,9 +3,10 @@ import Router from "brew-js/extension/router";
 import Auth from "src/extension";
 import { createProvider } from "./harness/providers";
 import { waitFor } from "@testing-library/dom";
+import { _, mockFn, verifyCalls } from "@misonou/test-utils";
 
 describe('Auth extension', () => {
-    it('should resume user session from previous active provider', async () => {
+    it('should login from designated provider after redirection', async () => {
         const provider1 = createProvider('provider1', 'password', 'test', true);
         const provider2 = createProvider('provider2', 'password', 'test', true);
 
@@ -22,6 +23,7 @@ describe('Auth extension', () => {
             expiresOn: Date.now() + 1000
         });
 
+        const cb = mockFn();
         const app = brew.with(Router, Auth)(app => {
             app.useRouter({
                 baseUrl: '/base',
@@ -35,9 +37,13 @@ describe('Auth extension', () => {
                     return account;
                 }
             });
+            app.on('login', cb);
         });
         await app.ready;
         expect(app.user).toEqual({ id: 'id2' });
+        verifyCalls(cb, [
+            [expect.objectContaining({ sessionResumed: false, sessionChanged: false }), _]
+        ]);
         await waitFor(() => expect(app.path).toBe('/bar'));
     });
 });

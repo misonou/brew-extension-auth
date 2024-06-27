@@ -29,8 +29,10 @@ const loginParams = { provider: 'default' };
 let initCall;
 let initUser;
 let initError;
+let initAuthEvent;
 
 beforeAll(async () => {
+    const authEventCb = mockFn();
     const onerror = mockFn();
     dom.on('error', onerror);
     providers[1].init.mockRejectedValue(errorWithCode(ErrorCode.invalidCredential));
@@ -47,6 +49,8 @@ beforeAll(async () => {
             providers,
             resolveUser
         });
+        app.on('login', authEventCb);
+        app.on('logout', authEventCb);
     });
     await app.ready;
     providers.forEach(v => {
@@ -54,6 +58,7 @@ beforeAll(async () => {
     });
     initCall = cloneMockResult(authProvider.init);
     initError = cloneMockResult(onerror);
+    initAuthEvent = cloneMockResult(authEventCb);
     initUser = app.user;
 });
 
@@ -76,6 +81,10 @@ describe('Auth extension', () => {
 
     it('should be not logged in by default', () => {
         expect(initUser).toBeNull();
+    });
+
+    it('should not invoke login or logout event on start by default', () => {
+        expect(initAuthEvent).not.toHaveBeenCalled();
     });
 });
 
@@ -182,7 +191,10 @@ describe('app.login', () => {
             provider: 'default',
             returnPath: app.path
         });
-        expect(app.cache.get('brew.auth')).toBeUndefined();
+        expect(app.cache.get('brew.auth')).toEqual({
+            provider: 'default',
+            accountId: 'id'
+        });
     });
 
     it('should delete returning info after login failed', async () => {
