@@ -2,7 +2,7 @@ import brew from "brew-js/app";
 import Router from "brew-js/extension/router";
 import Auth from "src/extension";
 import * as ErrorCode from "src/errorCode";
-import { _, cleanup, mockFn, verifyCalls } from "@misonou/test-utils";
+import { _, cleanup, mockFn, verifyCalls, cloneMockResult } from "@misonou/test-utils";
 import { waitFor } from "@testing-library/dom";
 import { catchAsync } from "zeta-dom/util";
 import dom from "zeta-dom/dom";
@@ -11,21 +11,6 @@ import { createProvider, getAccessToken, providerResult } from "./harness/provid
 
 function normalizeURL(url) {
     return new URL(url, location.origin).toString();
-}
-
-/** @param {jest.Mock} mock  */
-function cloneMockResult(mock) {
-    return {
-        _isMockFunction: true,
-        getMockName: mock.getMockName,
-        mock: {
-            calls: [...mock.mock.calls],
-            instances: [...mock.mock.instances],
-            contexts: [...mock.mock.contexts],
-            results: [...mock.mock.results],
-            lastCall: mock.mock.lastCall
-        }
-    };
 }
 
 /** @type Brew.AppInstance<import("src").AuthContext<any> & Brew.WithRouter> */
