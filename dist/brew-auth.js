@@ -1,4 +1,4 @@
-/*! @misonou/brew-extension-auth v0.3.0 | (c) misonou | https://misonou.github.io */
+/*! @misonou/brew-extension-auth v0.3.1 | (c) misonou | https://misonou.github.io */
 (function webpackUniversalModuleDefinition(root, factory) {
 	if(typeof exports === 'object' && typeof module === 'object')
 		module.exports = factory(require("brew-js"), require("zeta-dom"));
@@ -136,6 +136,7 @@ var _lib$util = external_commonjs_zeta_dom_commonjs2_zeta_dom_amd_zeta_dom_root_
   exclude = _lib$util.exclude,
   extend = _lib$util.extend,
   is = _lib$util.is,
+  isErrorWithCode = _lib$util.isErrorWithCode,
   isFunction = _lib$util.isFunction,
   makeArray = _lib$util.makeArray,
   makeAsync = _lib$util.makeAsync,
@@ -187,7 +188,9 @@ var CACHE_KEY = 'brew.auth';
     };
     contexts.set(provider, context);
     return resolve(provider.init(context))["catch"](function (e) {
-      reportError(e);
+      if (!isErrorWithCode(e, invalidCredential)) {
+        reportError(e);
+      }
     });
   }
   function filterByProp(arr, key, value) {
@@ -458,24 +461,24 @@ function getOptionsWithBody(method, body, options) {
     })
   });
 }
+function handleResult(response, data, error) {
+  if (response.ok) {
+    return data;
+  }
+  throw errorWithCode(apiError, '', {
+    data: data,
+    error: error || null,
+    status: response.status
+  });
+}
 function fetchJSON(request, next) {
   request.headers.set('accept', 'application/json');
   return (next || fetch)(request).then(function (response) {
     return response.json().then(function (data) {
-      if (response.ok) {
-        return data;
-      }
-      throw errorWithCode(apiError, '', {
-        data: data
-      });
+      return handleResult(response, data);
     }, function (e) {
-      if (response.ok) {
-        // assume empty for non-JSON response with 2xx status
-        return null;
-      }
-      throw errorWithCode(apiError, '', {
-        error: e
-      });
+      // assume empty for non-JSON response with 2xx status
+      return handleResult(response, null, e);
     });
   });
 }
