@@ -170,7 +170,7 @@ export default addExtension('auth', ['router'], function (app, options) {
             if (!results[index]) {
                 index = results.findIndex(pipe);
             }
-            return index >= 0 ? handleLogin(providers[index], results[index]) : handleLogout();
+            return index >= 0 ? handleLogin(providers[index], results[index]).catch(reportError) : handleLogout();
         });
     });
 });
