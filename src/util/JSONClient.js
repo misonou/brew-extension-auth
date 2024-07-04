@@ -1,6 +1,7 @@
 import { defineHiddenProperty, each, errorWithCode, extend, is } from "zeta-dom/util";
 import { combinePath } from "brew-js/util/path";
 import * as BrewError from "brew-js/errorCode";
+import * as AuthError from "../errorCode.js";
 
 function getOptionsWithBody(method, body, options) {
     options = options || {};
@@ -17,7 +18,7 @@ function handleResult(response, data, error) {
     if (response.ok) {
         return data;
     }
-    throw errorWithCode(BrewError.apiError, '', {
+    throw errorWithCode(response.status === 401 ? AuthError.invalidCredential : BrewError.apiError, '', {
         data: data,
         error: error || null,
         status: response.status
