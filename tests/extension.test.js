@@ -4,7 +4,7 @@ import Auth from "src/extension";
 import * as ErrorCode from "src/errorCode";
 import { _, cleanup, mockFn, verifyCalls, cloneMockResult } from "@misonou/test-utils";
 import { waitFor } from "@testing-library/dom";
-import { catchAsync, errorWithCode } from "zeta-dom/util";
+import { catchAsync, errorWithCode, throws } from "zeta-dom/util";
 import dom from "zeta-dom/dom";
 import { jest } from "@jest/globals";
 import { createProvider, getAccessToken, providerResult } from "./harness/providers";
@@ -21,6 +21,7 @@ const providers = [
     authProvider,
     createProvider('provider2', 'publicKey', 'dummy', false),
     createProvider('provider3', 'publicKey', 'dummy', false),
+    createProvider('provider4', 'publicKey', 'dummy', false),
 ];
 const resolveUser = mockFn(v => v.account);
 const loginParams = { provider: 'default' };
@@ -34,6 +35,7 @@ beforeAll(async () => {
     dom.on('error', onerror);
     providers[1].init.mockRejectedValue(errorWithCode(ErrorCode.invalidCredential));
     providers[2].init.mockRejectedValue(new Error());
+    providers[3].init.mockImplementation(() => throws(''));
 
     app = brew.with(Router, Auth)(app => {
         app.useRouter({
@@ -69,7 +71,7 @@ describe('Auth extension', () => {
     });
 
     it('should catch init error', () => {
-        expect(initError).toHaveBeenCalledTimes(1);
+        expect(initError).toHaveBeenCalledTimes(2);
     });
 
     it('should be not logged in by default', () => {

@@ -31,7 +31,7 @@ export default addExtension('auth', ['router'], function (app, options) {
             }
         };
         contexts.set(provider, context);
-        return resolve(provider.init(context)).catch(function (e) {
+        return makeAsync(provider.init).call(provider, context).catch(function (e) {
             if (!isErrorWithCode(e, AuthError.invalidCredential)) {
                 reportError(e);
             }
