@@ -1,4 +1,4 @@
-/*! @misonou/brew-extension-auth v0.3.1 | (c) misonou | https://misonou.github.io */
+/*! @misonou/brew-extension-auth v0.3.2 | (c) misonou | https://misonou.github.io */
 (function webpackUniversalModuleDefinition(root, factory) {
 	if(typeof exports === 'object' && typeof module === 'object')
 		module.exports = factory(require("brew-js"), require("zeta-dom"));
@@ -187,7 +187,7 @@ var CACHE_KEY = 'brew.auth';
       }
     };
     contexts.set(provider, context);
-    return resolve(provider.init(context))["catch"](function (e) {
+    return makeAsync(provider.init).call(provider, context)["catch"](function (e) {
       if (!isErrorWithCode(e, invalidCredential)) {
         reportError(e);
       }
@@ -324,7 +324,7 @@ var CACHE_KEY = 'brew.auth';
       if (!results[index]) {
         index = results.findIndex(pipe);
       }
-      return index >= 0 ? handleLogin(providers[index], results[index]) : handleLogout();
+      return index >= 0 ? handleLogin(providers[index], results[index])["catch"](reportError) : handleLogout();
     });
   });
 }));
@@ -451,6 +451,7 @@ var apiError = errorCode.apiError;
 
 
 
+
 function getOptionsWithBody(method, body, options) {
   options = options || {};
   return extend({}, options, {
@@ -465,7 +466,7 @@ function handleResult(response, data, error) {
   if (response.ok) {
     return data;
   }
-  throw errorWithCode(apiError, '', {
+  throw errorWithCode(response.status === 401 ? invalidCredential : apiError, '', {
     data: data,
     error: error || null,
     status: response.status
