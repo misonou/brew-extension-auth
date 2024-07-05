@@ -1,4 +1,4 @@
-import { AuthProvider, AuthProviderInfo, AuthProviderLoginRequest, AuthProviderLogoutRequest, AuthProviderResult } from "./extension";
+import { AuthProvider, AuthProviderContext, AuthProviderInfo, AuthProviderLoginRequest, AuthProviderLogoutRequest, AuthProviderResult } from "./extension";
 
 export type AuthClientCachedResult<T extends AuthProviderResult> = Omit<T, 'account'> & Pick<Partial<T>, 'account'>;
 
@@ -15,15 +15,15 @@ export interface AuthClient<K extends string, T extends AuthProviderResult> {
     /**
      * Performs login.
      */
-    login(params: AuthProviderLoginRequest): Promise<T>;
+    login(params: AuthProviderLoginRequest, context: AuthProviderContext): Promise<T>;
     /**
      * Performs logout.
      */
-    logout(params: AuthProviderLogoutRequest): Promise<void>;
+    logout(params: AuthProviderLogoutRequest, context: AuthProviderContext): Promise<void>;
     /**
      * Refreshes current login session.
      */
-    refresh(current: AuthClientCachedResult<T>): Promise<T>;
+    refresh(current: AuthClientCachedResult<T>, context: AuthProviderContext): Promise<T>;
     /**
      * Returns whether the authentication provider can process the request given the login hint.
      * @param loginHint Login hint, ususally user email, provided by user.

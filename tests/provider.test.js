@@ -32,21 +32,25 @@ beforeAll(async () => {
 
 describe('AuthProvider', () => {
     it('should forward calls to client', async () => {
+        const contextArg = expect.objectContaining({
+            redirectUri: expect.any(String)
+        });
+
         jest.useFakeTimers();
         await app.login({ loginHint: 'foo', password: 'bar' });
         verifyCalls(authClient.login, [
-            [expect.objectContaining({ loginHint: 'foo', password: 'bar' })]
+            [expect.objectContaining({ loginHint: 'foo', password: 'bar' }), contextArg]
         ]);
 
         jest.advanceTimersByTime(2000);
         await app.acquireToken();
         verifyCalls(authClient.refresh, [
-            [expect.objectContaining(providerResult)]
+            [expect.objectContaining(providerResult), contextArg]
         ]);
 
         await app.logout();
         verifyCalls(authClient.logout, [
-            [expect.objectContaining({ accountId: providerResult.accountId, singleLogout: undefined })]
+            [expect.objectContaining({ accountId: providerResult.accountId, singleLogout: undefined }), contextArg]
         ]);
     });
 

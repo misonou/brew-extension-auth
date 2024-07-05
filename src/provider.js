@@ -35,20 +35,20 @@ const AuthProvider = {
                     }
                 });
             },
-            getActiveAccount: function () {
+            getActiveAccount: function (context) {
                 var cached = getCachedData();
-                return cached && client.refresh(cached).then(setCurrentData);
+                return cached && client.refresh(cached, context).then(setCurrentData);
             },
             handleLoginRedirect: function () {
             },
-            login: function (params) {
-                return client.login(params).then(setCurrentData);
+            login: function (params, context) {
+                return client.login(params, context).then(setCurrentData);
             },
-            logout: function (params) {
-                return client.logout(params).then(setCurrentData.bind(0, undefined));
+            logout: function (params, context) {
+                return client.logout(params, context).then(setCurrentData.bind(0, undefined));
             },
-            refresh: function (cached) {
-                return client.refresh(cached).then(setCurrentData);
+            refresh: function (cached, context) {
+                return client.refresh(cached, context).then(setCurrentData);
             },
             isHandleable: function (loginHint) {
                 return client.isHandleable(loginHint);

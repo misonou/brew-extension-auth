@@ -28,6 +28,10 @@ beforeAll(async () => {
 
 describe('AuthProvider', () => {
     it('should resume from previous session', async () => {
+        const contextArg = expect.objectContaining({
+            redirectUri: expect.any(String)
+        });
+
         const app = brew.with(Router, Auth)(app => {
             app.useRouter({
                 routes: ['/*']
@@ -38,7 +42,7 @@ describe('AuthProvider', () => {
         });
         await app.ready;
 
-        verifyCalls(authClient.refresh, [[cachedData]]);
+        verifyCalls(authClient.refresh, [[cachedData, contextArg]]);
         expect(app.user).toBeTruthy();
         await expect(app.acquireToken()).resolves.toBe(providerResult.accessToken);
     });
