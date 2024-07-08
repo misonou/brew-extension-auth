@@ -40,10 +40,10 @@ function getIssuerURL(domain) {
 function createProvider(key, client, options) {
     var scopes = options.scopes;
 
-    function refresh(current, context) {
+    function refresh(account, context) {
         return client.acquireTokenSilent({
             redirectUri: context.redirectUri,
-            account: current.account,
+            account: account,
             scopes: scopes
         });
     }
@@ -65,7 +65,6 @@ function createProvider(key, client, options) {
         key: key,
         authType: 'federated',
         providerType: 'msal',
-        refresh: refresh,
         isHandleable: function (loginHint) {
             if (!/@(.+)$/.test(loginHint)) {
                 return false;
@@ -89,10 +88,13 @@ function createProvider(key, client, options) {
                 return client.handleRedirectPromise();
             }).then(function (result) {
                 var account = client.getActiveAccount();
-                return result || (account && refresh({ account }, context));
+                return result || (account && refresh(account, context));
             }).then(handleResult, function () {
                 client.setActiveAccount(null);
             });
+        },
+        refresh: function (current, context) {
+            return refresh(current.account, context).then(handleResult);
         },
         login: function (params, context) {
             var request = {
