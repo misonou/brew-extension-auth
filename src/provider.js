@@ -1,5 +1,5 @@
 import { bind } from "zeta-dom/domUtil";
-import { exclude } from "zeta-dom/util";
+import { exclude, noop, resolve } from "zeta-dom/util";
 
 const AuthProvider = {
     from: function (key, client) {
@@ -34,12 +34,14 @@ const AuthProvider = {
                         context.revokeSession(e.oldValue);
                     }
                 });
+                return (client.init || noop).call(client, context);
             },
             getActiveAccount: function (context) {
                 var cached = getCachedData();
                 return cached && client.refresh(cached, context).then(setCurrentData);
             },
-            handleLoginRedirect: function () {
+            handleLoginRedirect: function (context) {
+                return resolve((client.handleLoginRedirect || noop).call(client, context)).then(setCurrentData);
             },
             login: function (params, context) {
                 return client.login(params, context).then(setCurrentData);

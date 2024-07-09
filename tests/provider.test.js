@@ -2,16 +2,18 @@ import brew from "brew-js/app";
 import Router from "brew-js/extension/router";
 import Auth from "src/extension";
 import AuthProvider from "src/provider";
-import { cleanup, mockFn, verifyCalls } from "@misonou/test-utils";
+import { cleanup, cloneMockResult, mockFn, verifyCalls } from "@misonou/test-utils";
 import { providerResult } from "./harness/providers";
 import { jest } from "@jest/globals";
 
 /** @type Brew.AppInstance<import("src").AuthContext<any>> */
 let app;
+let initCalls;
 
 const authClient = {
     authType: 'password',
     providerType: 'test',
+    init: mockFn(async () => { }),
     login: mockFn(async () => ({ ...providerResult, expiresOn: jest.now() + 1000 })),
     logout: mockFn(async () => { }),
     refresh: mockFn(async () => ({ ...providerResult, expiresOn: jest.now() + 1000 })),
@@ -28,6 +30,7 @@ beforeAll(async () => {
         });
     });
     await app.ready;
+    initCalls = cloneMockResult(authClient.init);
 });
 
 describe('AuthProvider', () => {
@@ -35,6 +38,7 @@ describe('AuthProvider', () => {
         const contextArg = expect.objectContaining({
             redirectUri: expect.any(String)
         });
+        verifyCalls(initCalls, [[contextArg]]);
 
         jest.useFakeTimers();
         await app.login({ loginHint: 'foo', password: 'bar' });

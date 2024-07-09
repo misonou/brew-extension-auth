@@ -13,6 +13,15 @@ export interface AuthClient<K extends string, T extends AuthProviderResult> {
     readonly providerType: K;
 
     /**
+     * Performs initialization.
+     */
+    init?(context: AuthProviderContext): void | Promise<void>;
+    /**
+     * Handles authentication result returned
+     * from external authentication provider during app initialization.
+     */
+    handleLoginRedirect?(context: AuthProviderContext): Promise<T | null | undefined>;
+    /**
      * Performs login.
      */
     login(params: AuthProviderLoginRequest, context: AuthProviderContext): Promise<T>;
