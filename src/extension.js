@@ -16,6 +16,7 @@ export default addExtension('auth', ['router'], function (app, options) {
     var redirectUri = combinePath(location.origin, app.toHref('/'));
     var sessionCache = app.cache;
     var previousState = sessionCache.get(CACHE_KEY) || {};
+    var isNewSession = performance.navigation.type === 0;
     var currentProvider;
     var currentResult;
 
@@ -32,7 +33,13 @@ export default addExtension('auth', ['router'], function (app, options) {
             }
         };
         contexts.set(provider, context);
-        return makeAsync(provider.init).call(provider, context).catch(function (e) {
+        return makeAsync(provider.init).call(provider, context).then(function () {
+            if (isNewSession && previousState.provider === provider.key && previousState.returnPath) {
+                return provider.handleLoginRedirect(context);
+            }
+        }).then(function (result) {
+            return result || provider.getActiveAccount(context);
+        }).catch(function (e) {
             if (!isErrorWithCode(e, AuthError.invalidCredential)) {
                 reportError(e);
             }

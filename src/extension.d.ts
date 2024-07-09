@@ -126,11 +126,17 @@ export interface AuthProvider<K extends string = string, T = any> extends AuthPr
     readonly providerType: K;
 
     /**
-     * Restores existing login session, or handles authentication result returned
-     * from external authentication provider during app initialization.
-     * @returns Authentication result when user have logged in, or `null` or `undefined` otherwise.
+     * Performs initialization.
      */
-    init(context: AuthProviderContext): AuthProviderResult<T> | Promise<AuthProviderResult<T> | null | undefined> | null | undefined;
+    init(context: AuthProviderContext): void | Promise<void>;
+    /**
+     * Restores existing login session.
+     */
+    getActiveAccount(context: AuthProviderContext): AuthProviderResult<T> | null | undefined | Promise<AuthProviderResult<T> | null | undefined>;
+    /**
+     * Handles authentication result returned from external authentication provider during app initialization.
+     */
+    handleLoginRedirect(context: AuthProviderContext): AuthProviderResult<T> | null | undefined | Promise<AuthProviderResult<T> | null | undefined>;
     /**
      * Performs login.
      */

@@ -13,7 +13,7 @@ describe('Auth extension', () => {
         dom.on('error', onerror);
 
         const provider = createProvider('provider1', 'password', 'test', true);
-        provider.init.mockResolvedValueOnce({
+        provider.handleLoginRedirect.mockResolvedValueOnce({
             account: { id: 'id1' },
             accountId: 'id1',
             accessToken: '__access_token__',

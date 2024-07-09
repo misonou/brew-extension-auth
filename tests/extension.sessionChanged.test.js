@@ -9,7 +9,7 @@ describe('Auth extension', () => {
         const provider1 = createProvider('provider1', 'password', 'test', true);
         const provider2 = createProvider('provider2', 'password', 'test', true);
 
-        provider1.init.mockResolvedValueOnce({
+        provider1.getActiveAccount.mockResolvedValueOnce({
             account: { id: 'id1' },
             accountId: 'id1',
             accessToken: '__access_token__',

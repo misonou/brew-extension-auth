@@ -34,8 +34,12 @@ const AuthProvider = {
                         context.revokeSession(e.oldValue);
                     }
                 });
+            },
+            getActiveAccount: function () {
                 var cached = getCachedData();
                 return cached && client.refresh(cached).then(setCurrentData);
+            },
+            handleLoginRedirect: function () {
             },
             login: function (params) {
                 return client.login(params).then(setCurrentData);

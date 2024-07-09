@@ -84,14 +84,16 @@ function createProvider(key, client, options) {
                     context.revokeSession(message.payload.homeAccountId);
                 }
             });
-            return client.initialize().then(function () {
-                return client.handleRedirectPromise();
-            }).then(function (result) {
-                var account = client.getActiveAccount();
-                return result || (account && refresh(account, context));
-            }).then(handleResult, function () {
+            return client.initialize();
+        },
+        getActiveAccount: function (context) {
+            var account = client.getActiveAccount();
+            return account && refresh(account, context).then(handleResult, function () {
                 client.setActiveAccount(null);
             });
+        },
+        handleLoginRedirect: function () {
+            return client.handleRedirectPromise().then(handleResult);
         },
         refresh: function (current, context) {
             return refresh(current.account, context).then(handleResult);
