@@ -1,4 +1,4 @@
-/*! @misonou/brew-extension-auth v0.3.2 | (c) misonou | https://misonou.github.io */
+/*! @misonou/brew-extension-auth v0.3.3 | (c) misonou | https://misonou.github.io */
 (function webpackUniversalModuleDefinition(root, factory) {
 	if(typeof exports === 'object' && typeof module === 'object')
 		module.exports = factory(require("@azure/msal-browser"), require("brew-js"), require("zeta-dom"));
@@ -147,10 +147,10 @@ function getIssuerURL(domain) {
  */
 function createProvider(key, client, options) {
   var scopes = options.scopes;
-  function refresh(current, context) {
+  function _refresh(account, context) {
     return client.acquireTokenSilent({
       redirectUri: context.redirectUri,
-      account: current.account,
+      account: account,
       scopes: scopes
     });
   }
@@ -170,7 +170,6 @@ function createProvider(key, client, options) {
     key: key,
     authType: 'federated',
     providerType: 'msal',
-    refresh: refresh,
     isHandleable: function isHandleable(loginHint) {
       if (!/@(.+)$/.test(loginHint)) {
         return false;
@@ -194,12 +193,13 @@ function createProvider(key, client, options) {
         return client.handleRedirectPromise();
       }).then(function (result) {
         var account = client.getActiveAccount();
-        return result || account && refresh({
-          account: account
-        }, context);
+        return result || account && _refresh(account, context);
       }).then(handleResult, function () {
         client.setActiveAccount(null);
       });
+    },
+    refresh: function refresh(current, context) {
+      return _refresh(current.account, context).then(handleResult);
     },
     login: function login(params, context) {
       var request = {
