@@ -1,4 +1,4 @@
-/*! @misonou/brew-extension-auth v0.3.3 | (c) misonou | https://misonou.github.io */
+/*! @misonou/brew-extension-auth v0.4.0 | (c) misonou | https://misonou.github.io */
 (function webpackUniversalModuleDefinition(root, factory) {
 	if(typeof exports === 'object' && typeof module === 'object')
 		module.exports = factory(require("brew-js"), require("zeta-dom"));
@@ -141,6 +141,7 @@ var _lib$util = external_commonjs_zeta_dom_commonjs2_zeta_dom_amd_zeta_dom_root_
   makeArray = _lib$util.makeArray,
   makeAsync = _lib$util.makeAsync,
   mapRemove = _lib$util.mapRemove,
+  noop = _lib$util.noop,
   pick = _lib$util.pick,
   pipe = _lib$util.pipe,
   reject = _lib$util.reject,
@@ -172,6 +173,8 @@ var CACHE_KEY = 'brew.auth';
   var contexts = new Map();
   var redirectUri = combinePath(location.origin, app.toHref('/'));
   var sessionCache = app.cache;
+  var previousState = sessionCache.get(CACHE_KEY) || {};
+  var isNewSession = performance.navigation.type === 0;
   var currentProvider;
   var currentResult;
   function initProvider(provider) {
@@ -187,7 +190,13 @@ var CACHE_KEY = 'brew.auth';
       }
     };
     contexts.set(provider, context);
-    return makeAsync(provider.init).call(provider, context)["catch"](function (e) {
+    return makeAsync(provider.init).call(provider, context).then(function () {
+      if (isNewSession && previousState.provider === provider.key && previousState.returnPath) {
+        return provider.handleLoginRedirect(context);
+      }
+    }).then(function (result) {
+      return result || provider.getActiveAccount(context);
+    })["catch"](function (e) {
       if (!isErrorWithCode(e, invalidCredential)) {
         reportError(e);
       }
@@ -223,13 +232,20 @@ var CACHE_KEY = 'brew.auth';
       returnPath: returnPath
     });
   }
-  function popSessionState(provider) {
+  function popSessionState(provider, accountId) {
     var state = mapRemove(sessionCache, CACHE_KEY) || {};
-    if (state.provider === provider) {
+    if (state.provider === provider && state.returnPath) {
       catchAsync(app.navigate(state.returnPath));
+    }
+    if (provider) {
+      sessionCache.set(CACHE_KEY, {
+        provider: provider,
+        accountId: accountId
+      });
     }
   }
   function handleLogin(provider, result) {
+    var resumed = previousState.provider === provider.key && previousState.accountId === result.accountId;
     var data = {
       provider: provider.key,
       providerType: provider.providerType,
@@ -239,10 +255,13 @@ var CACHE_KEY = 'brew.auth';
     currentResult = result;
     return (options.resolveUser ? makeAsync(options.resolveUser)(data) : resolve(data.account)).then(function (user) {
       setUser(user);
-      popSessionState(provider.key);
+      popSessionState(provider.key, result.accountId);
       app.emit('login', {
-        user: user
+        user: user,
+        sessionResumed: resumed,
+        sessionChanged: !resumed && !!previousState.accountId
       });
+      previousState = {};
     }, function (error) {
       handleLogout();
       throw error;
@@ -254,11 +273,12 @@ var CACHE_KEY = 'brew.auth';
     currentResult = null;
     setUser(null);
     popSessionState('');
-    if (user) {
+    if (user || previousState.accountId) {
       app.emit('logout', {
         user: user
       });
     }
+    previousState = {};
   }
   function callProvider(provider, method, params, callback) {
     var promise = makeAsync(provider[method]).call(provider, extend({}, providerParams, params), contexts.get(provider));
@@ -320,7 +340,7 @@ var CACHE_KEY = 'brew.auth';
   });
   app.beforeInit(function () {
     return resolveAll(providers.map(initProvider), function (results) {
-      var index = providers.indexOf(findProvider(sessionCache.get(CACHE_KEY) || {}));
+      var index = providers.indexOf(findProvider(previousState));
       if (!results[index]) {
         index = results.findIndex(pipe);
       }
@@ -365,17 +385,23 @@ var AuthProvider = {
             context.revokeSession(e.oldValue);
           }
         });
+        return (client.init || noop).call(client, context);
+      },
+      getActiveAccount: function getActiveAccount(context) {
         var cached = getCachedData();
-        return cached && client.refresh(cached).then(setCurrentData);
+        return cached && client.refresh(cached, context).then(setCurrentData);
       },
-      login: function login(params) {
-        return client.login(params).then(setCurrentData);
+      handleLoginRedirect: function handleLoginRedirect(context) {
+        return resolve((client.handleLoginRedirect || noop).call(client, context)).then(setCurrentData);
       },
-      logout: function logout(params) {
-        return client.logout(params).then(setCurrentData.bind(0, undefined));
+      login: function login(params, context) {
+        return client.login(params, context).then(setCurrentData);
       },
-      refresh: function refresh(cached) {
-        return client.refresh(cached).then(setCurrentData);
+      logout: function logout(params, context) {
+        return client.logout(params, context).then(setCurrentData.bind(0, undefined));
+      },
+      refresh: function refresh(cached, context) {
+        return client.refresh(cached, context).then(setCurrentData);
       },
       isHandleable: function isHandleable(loginHint) {
         return client.isHandleable(loginHint);

@@ -1,6 +1,6 @@
 {
   "name": "@misonou/brew-extension-auth",
-  "version": "0.3.3",
+  "version": "0.4.0",
   "description": "",
   "type": "module",
   "main": "src/index.js",

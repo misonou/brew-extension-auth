@@ -1,4 +1,4 @@
-/*! @misonou/brew-extension-auth v0.3.3 | (c) misonou | https://misonou.github.io */
+/*! @misonou/brew-extension-auth v0.4.0 | (c) misonou | https://misonou.github.io */
 (function webpackUniversalModuleDefinition(root, factory) {
 	if(typeof exports === 'object' && typeof module === 'object')
 		module.exports = factory(require("@azure/msal-browser"), require("brew-js"), require("zeta-dom"));
@@ -189,14 +189,16 @@ function createProvider(key, client, options) {
           context.revokeSession(message.payload.homeAccountId);
         }
       });
-      return client.initialize().then(function () {
-        return client.handleRedirectPromise();
-      }).then(function (result) {
-        var account = client.getActiveAccount();
-        return result || account && _refresh(account, context);
-      }).then(handleResult, function () {
+      return client.initialize();
+    },
+    getActiveAccount: function getActiveAccount(context) {
+      var account = client.getActiveAccount();
+      return account && _refresh(account, context).then(handleResult, function () {
         client.setActiveAccount(null);
       });
+    },
+    handleLoginRedirect: function handleLoginRedirect() {
+      return client.handleRedirectPromise().then(handleResult);
     },
     refresh: function refresh(current, context) {
       return _refresh(current.account, context).then(handleResult);
