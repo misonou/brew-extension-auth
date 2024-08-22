@@ -149,6 +149,7 @@ define(MsalAuthProvider, {
             };
         }
         var client = is(options, PublicClientApplication) || new PublicClientApplication(extend(true, {}, defaultConfig, options.config));
+        client.getConfiguration().auth.navigateToLoginRequestUrl = false;
         return createProvider(key, client, options);
     }
 });
