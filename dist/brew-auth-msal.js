@@ -1,4 +1,4 @@
-/*! @misonou/brew-extension-auth v0.4.0 | (c) misonou | https://misonou.github.io */
+/*! @misonou/brew-extension-auth v0.4.1 | (c) misonou | https://misonou.github.io */
 (function webpackUniversalModuleDefinition(root, factory) {
 	if(typeof exports === 'object' && typeof module === 'object')
 		module.exports = factory(require("@azure/msal-browser"), require("brew-js"), require("zeta-dom"));
@@ -257,6 +257,7 @@ util_define(MsalAuthProvider, {
       };
     }
     var client = is(options, msal_browser_root_msal_.PublicClientApplication) || new msal_browser_root_msal_.PublicClientApplication(extend(true, {}, defaultConfig, options.config));
+    client.getConfiguration().auth.navigateToLoginRequestUrl = false;
     return createProvider(key, client, options);
   }
 });
