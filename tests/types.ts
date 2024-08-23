@@ -58,6 +58,6 @@ brew.with(<AuthExtension<User>>Auth)(app => {
         expectTypeOf(e.user).toEqualTypeOf<User>();
     });
     app.on('logout', e => {
-        expectTypeOf(e.user).toEqualTypeOf<User>();
+        expectTypeOf(e.user).toEqualTypeOf<User | null>();
     });
 });
