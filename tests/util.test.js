@@ -63,14 +63,12 @@ describe('JSONClient', () => {
         await expect(client.get('/a')).rejects.toBeErrorWithCode('brew/api-error', { status: 500, data: { error: 'foo' } });
 
         fetch.mockResolvedValueOnce(new Response('xxx', { status: 500 }));
-        await expect(client.get('/a')).rejects.toBeErrorWithCode('brew/api-error', { status: 500, data: null });
+        await expect(client.get('/a')).rejects.toBeErrorWithCode('brew/api-error', { status: 500, data: undefined });
 
         fetch.mockResolvedValueOnce(new Response('{"error":"foo"}', { status: 401 }));
         await expect(client.get('/a')).rejects.toBeErrorWithCode('brew/auth-invalid-credential', { status: 401, data: { error: 'foo' } });
-    });
 
-    it('should not throw if response is not a valid JSON', async () => {
         fetch.mockResolvedValueOnce(new Response('xxx'));
-        await expect(client.get('/a')).resolves.toBeNull();
+        await expect(client.get('/a')).rejects.toBeErrorWithCode('brew/api-error', { status: 200, data: undefined });
     });
 });

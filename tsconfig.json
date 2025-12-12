@@ -2,6 +2,10 @@
     "extends": "./jsconfig",
     "compilerOptions": {
         "esModuleInterop": true,
+        "typeRoots": [
+            "node_modules/@types",
+            "../@types"
+        ],
         "types": [
             "jquery",
             "jq-scrollable",

@@ -10,7 +10,9 @@
         "moduleResolution": "node",
         "baseUrl": ".",
         "paths": {
-            "@misonou/brew-extension-auth": ["."]
+            "src/*": ["./src/*"],
+            "zeta-dom/*": ["../zeta-dom/src/*", "node_modules/zeta-dom/*"],
+            "brew-js/*": ["../brew-js/src/*", "node_modules/brew-js/*"],
         }
     },
     "exclude": ["build"]

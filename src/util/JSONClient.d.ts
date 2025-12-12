@@ -18,6 +18,10 @@ export interface JSONRequestError extends Error {
     readonly error: Error | null;
 }
 
+
+/**
+ * @deprecated Use `createApiClient` from `brew-js`.
+ */
 export default class JSONClient {
     constructor(baseUrl: string, middleware?: JSONRequestMiddleware);
 
