@@ -1,6 +1,7 @@
 import { errorWithCode, isErrorWithCode } from "zeta-dom/util";
 import * as BrewError from "brew-js/errorCode";
-import { AuthClient, AuthClientCachedResult, AuthError, AuthProviderLoginRequest, AuthProviderResult, JSONClient } from "@misonou/brew-extension-auth";
+import { AuthClient, AuthClientCachedResult, AuthError, AuthProviderLoginRequest, AuthProviderResult } from "@misonou/brew-extension-auth";
+import { ApiClient, createApiClient } from "brew-js/util/fetch";
 
 export interface DirectusUser {
     appearance: string | null;
@@ -30,11 +31,12 @@ export default class DirectusAuthClient implements AuthClient<"directus", Result
     readonly authType = 'password';
     readonly providerType = 'directus';
 
-    private readonly client: JSONClient;
+    private readonly client: ApiClient;
 
     constructor(baseUrl: string) {
-        this.client = new JSONClient(baseUrl, (req, next) => {
-            return next(req).then(v => v?.data, e => this.handleError(e));
+        this.client = createApiClient(baseUrl, {
+            data: v => v?.data,
+            error: e => this.handleError(e)
         });
     }
 

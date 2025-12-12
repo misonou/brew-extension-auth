@@ -1,13 +1,15 @@
 import { errorWithCode, isErrorWithCode } from "zeta-dom/util";
 import * as BrewError from "brew-js/errorCode";
-import { AuthError, JSONClient } from "@misonou/brew-extension-auth";
+import { AuthError } from "@misonou/brew-extension-auth";
+import { createApiClient } from "brew-js/util/fetch";
 
 export default class DirectusAuthClient {
     constructor(baseUrl) {
         this.authType = 'password';
         this.providerType = 'directus';
-        this.client = new JSONClient(baseUrl, (req, next) => {
-            return next(req).then(v => v?.data, e => this.handleError(e));
+        this.client = createApiClient(baseUrl, {
+            data: v => v?.data,
+            error: e => this.handleError(e)
         });
     }
 
