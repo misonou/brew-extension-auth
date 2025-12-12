@@ -1,17 +1,24 @@
-/*! @misonou/brew-extension-auth v0.4.1 | (c) misonou | https://misonou.github.io */
+/*! @misonou/brew-extension-auth v0.5.0 | (c) misonou | https://misonou.github.io */
 (function webpackUniversalModuleDefinition(root, factory) {
 	if(typeof exports === 'object' && typeof module === 'object')
 		module.exports = factory(require("@azure/msal-browser"), require("brew-js"), require("zeta-dom"));
 	else if(typeof define === 'function' && define.amd)
 		define("@misonou/brew-extension-auth/msal", ["@azure/msal-browser", "brew-js", "zeta-dom"], factory);
 	else if(typeof exports === 'object')
-		exports["MsalAuthProvider"] = factory(require("@azure/msal-browser"), require("brew-js"), require("zeta-dom"));
+		exports["@misonou/brew-extension-auth/msal"] = factory(require("@azure/msal-browser"), require("brew-js"), require("zeta-dom"));
 	else
 		root["brew"] = root["brew"] || {}, root["brew"]["Auth"] = root["brew"]["Auth"] || {}, root["brew"]["Auth"]["MsalAuthProvider"] = factory(root["msal"], root["brew"], root["zeta"]);
 })(self, function(__WEBPACK_EXTERNAL_MODULE__735__, __WEBPACK_EXTERNAL_MODULE__760__, __WEBPACK_EXTERNAL_MODULE__231__) {
 return /******/ (function() { // webpackBootstrap
 /******/ 	"use strict";
 /******/ 	var __webpack_modules__ = ({
+
+/***/ 231:
+/***/ (function(module) {
+
+module.exports = __WEBPACK_EXTERNAL_MODULE__231__;
+
+/***/ }),
 
 /***/ 735:
 /***/ (function(module) {
@@ -24,13 +31,6 @@ module.exports = __WEBPACK_EXTERNAL_MODULE__735__;
 /***/ (function(module) {
 
 module.exports = __WEBPACK_EXTERNAL_MODULE__760__;
-
-/***/ }),
-
-/***/ 231:
-/***/ (function(module) {
-
-module.exports = __WEBPACK_EXTERNAL_MODULE__231__;
 
 /***/ })
 
@@ -80,8 +80,6 @@ module.exports = __WEBPACK_EXTERNAL_MODULE__231__;
 /******/ 	
 /************************************************************************/
 var __webpack_exports__ = {};
-// This entry need to be wrapped in an IIFE because it need to be isolated against other modules in the chunk.
-!function() {
 
 // EXPORTS
 __webpack_require__.d(__webpack_exports__, {
@@ -92,24 +90,24 @@ __webpack_require__.d(__webpack_exports__, {
 var msal_browser_root_msal_ = __webpack_require__(735);
 // EXTERNAL MODULE: external {"commonjs":"brew-js","commonjs2":"brew-js","amd":"brew-js","root":"brew"}
 var external_commonjs_brew_js_commonjs2_brew_js_amd_brew_js_root_brew_ = __webpack_require__(760);
-;// CONCATENATED MODULE: ./|umd|/brew-js/util/common.js
+;// ./|umd|/brew-js/util/common.js
 
 var getJSON = external_commonjs_brew_js_commonjs2_brew_js_amd_brew_js_root_brew_.getJSON;
 
-;// CONCATENATED MODULE: ./|umd|/brew-js/util/path.js
+;// ./|umd|/brew-js/util/path.js
 
 var isSubPathOf = external_commonjs_brew_js_commonjs2_brew_js_amd_brew_js_root_brew_.isSubPathOf;
 
 // EXTERNAL MODULE: external {"commonjs":"zeta-dom","commonjs2":"zeta-dom","amd":"zeta-dom","root":"zeta"}
 var external_commonjs_zeta_dom_commonjs2_zeta_dom_amd_zeta_dom_root_zeta_ = __webpack_require__(231);
-;// CONCATENATED MODULE: ./|umd|/zeta-dom/util.js
+;// ./|umd|/zeta-dom/util.js
 
 var _lib$util = external_commonjs_zeta_dom_commonjs2_zeta_dom_amd_zeta_dom_root_zeta_.util,
   util_define = _lib$util.define,
   extend = _lib$util.extend,
   is = _lib$util.is;
 
-;// CONCATENATED MODULE: ./src/msal.js
+;// ./src/msal.js
 
 
 
@@ -262,7 +260,6 @@ util_define(MsalAuthProvider, {
   }
 });
 /* harmony default export */ var msal = (MsalAuthProvider);
-}();
 __webpack_exports__ = __webpack_exports__["default"];
 /******/ 	return __webpack_exports__;
 /******/ })()

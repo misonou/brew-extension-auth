@@ -1,11 +1,11 @@
-/*! @misonou/brew-extension-auth v0.4.1 | (c) misonou | https://misonou.github.io */
+/*! @misonou/brew-extension-auth v0.5.0 | (c) misonou | https://misonou.github.io */
 (function webpackUniversalModuleDefinition(root, factory) {
 	if(typeof exports === 'object' && typeof module === 'object')
 		module.exports = factory(require("brew-js"), require("zeta-dom"));
 	else if(typeof define === 'function' && define.amd)
 		define("@misonou/brew-extension-auth", ["brew-js", "zeta-dom"], factory);
 	else if(typeof exports === 'object')
-		exports["Auth"] = factory(require("brew-js"), require("zeta-dom"));
+		exports["@misonou/brew-extension-auth"] = factory(require("brew-js"), require("zeta-dom"));
 	else
 		root["brew"] = root["brew"] || {}, root["brew"]["Auth"] = factory(root["brew"], root["zeta"]);
 })(self, function(__WEBPACK_EXTERNAL_MODULE__760__, __WEBPACK_EXTERNAL_MODULE__231__) {
@@ -13,17 +13,17 @@ return /******/ (function() { // webpackBootstrap
 /******/ 	"use strict";
 /******/ 	var __webpack_modules__ = ({
 
-/***/ 760:
-/***/ (function(module) {
-
-module.exports = __WEBPACK_EXTERNAL_MODULE__760__;
-
-/***/ }),
-
 /***/ 231:
 /***/ (function(module) {
 
 module.exports = __WEBPACK_EXTERNAL_MODULE__231__;
+
+/***/ }),
+
+/***/ 760:
+/***/ (function(module) {
+
+module.exports = __WEBPACK_EXTERNAL_MODULE__760__;
 
 /***/ })
 
@@ -84,8 +84,6 @@ module.exports = __WEBPACK_EXTERNAL_MODULE__231__;
 /******/ 	
 /************************************************************************/
 var __webpack_exports__ = {};
-// This entry need to be wrapped in an IIFE because it need to be isolated against other modules in the chunk.
-!function() {
 
 // EXPORTS
 __webpack_require__.d(__webpack_exports__, {
@@ -115,17 +113,17 @@ __webpack_require__.d(src_namespaceObject, {
 
 // EXTERNAL MODULE: external {"commonjs":"brew-js","commonjs2":"brew-js","amd":"brew-js","root":"brew"}
 var external_commonjs_brew_js_commonjs2_brew_js_amd_brew_js_root_brew_ = __webpack_require__(760);
-;// CONCATENATED MODULE: ./|umd|/brew-js/app.js
+;// ./|umd|/brew-js/app.js
 
 var addExtension = external_commonjs_brew_js_commonjs2_brew_js_amd_brew_js_root_brew_.addExtension;
 
-;// CONCATENATED MODULE: ./|umd|/brew-js/util/path.js
+;// ./|umd|/brew-js/util/path.js
 
 var combinePath = external_commonjs_brew_js_commonjs2_brew_js_amd_brew_js_root_brew_.combinePath;
 
 // EXTERNAL MODULE: external {"commonjs":"zeta-dom","commonjs2":"zeta-dom","amd":"zeta-dom","root":"zeta"}
 var external_commonjs_zeta_dom_commonjs2_zeta_dom_amd_zeta_dom_root_zeta_ = __webpack_require__(231);
-;// CONCATENATED MODULE: ./|umd|/zeta-dom/util.js
+;// ./|umd|/zeta-dom/util.js
 
 var _lib$util = external_commonjs_zeta_dom_commonjs2_zeta_dom_amd_zeta_dom_root_zeta_.util,
   catchAsync = _lib$util.catchAsync,
@@ -149,15 +147,15 @@ var _lib$util = external_commonjs_zeta_dom_commonjs2_zeta_dom_amd_zeta_dom_root_
   resolveAll = _lib$util.resolveAll,
   _throws = _lib$util["throws"];
 
-;// CONCATENATED MODULE: ./|umd|/zeta-dom/dom.js
+;// ./|umd|/zeta-dom/dom.js
 
 var reportError = external_commonjs_zeta_dom_commonjs2_zeta_dom_amd_zeta_dom_root_zeta_.dom.reportError;
 
-;// CONCATENATED MODULE: ./src/errorCode.js
+;// ./src/errorCode.js
 var loggedIn = 'brew/auth-logged-in';
 var noProvider = 'brew/auth-no-provider';
 var invalidCredential = 'brew/auth-invalid-credential';
-;// CONCATENATED MODULE: ./src/extension.js
+;// ./src/extension.js
 
 
 
@@ -348,11 +346,11 @@ var CACHE_KEY = 'brew.auth';
     });
   });
 }));
-;// CONCATENATED MODULE: ./|umd|/zeta-dom/domUtil.js
+;// ./|umd|/zeta-dom/domUtil.js
 
 var bind = external_commonjs_zeta_dom_commonjs2_zeta_dom_amd_zeta_dom_root_zeta_.util.bind;
 
-;// CONCATENATED MODULE: ./src/provider.js
+;// ./src/provider.js
 
 
 var AuthProvider = {
@@ -410,7 +408,7 @@ var AuthProvider = {
   }
 };
 /* harmony default export */ var provider = (AuthProvider);
-;// CONCATENATED MODULE: ./src/middleware.js
+;// ./src/middleware.js
 
 var HEADER_AUTHORIZATION = 'authorization';
 function retryOrEnd(acquireToken, response, retryable, callback, onError) {
@@ -468,68 +466,35 @@ function createFetchMiddleware(app, filter) {
 function createAxiosMiddleware(app, filter) {
   return axiosMiddleware.bind(0, app.acquireToken, filter);
 }
-;// CONCATENATED MODULE: ./|umd|/brew-js/errorCode.js
+;// ./|umd|/brew-js/util/fetch.js
 
-var errorCode = external_commonjs_brew_js_commonjs2_brew_js_amd_brew_js_root_brew_.ErrorCode;
-var apiError = errorCode.apiError;
+var createApiClient = external_commonjs_brew_js_commonjs2_brew_js_amd_brew_js_root_brew_.createApiClient;
 
-;// CONCATENATED MODULE: ./src/util/JSONClient.js
-
+;// ./src/util/JSONClient.js
 
 
 
-function getOptionsWithBody(method, body, options) {
-  options = options || {};
-  return extend({}, options, {
-    method: method,
-    body: JSON.stringify(body),
-    headers: extend({}, options.headers, {
-      'content-type': 'application/json'
-    })
-  });
-}
-function handleResult(response, data, error) {
-  if (response.ok) {
-    return data;
-  }
-  throw errorWithCode(response.status === 401 ? invalidCredential : apiError, '', {
-    data: data,
-    error: error || null,
-    status: response.status
-  });
-}
-function fetchJSON(request, next) {
-  request.headers.set('accept', 'application/json');
-  return (next || fetch)(request).then(function (response) {
-    return response.json().then(function (data) {
-      return handleResult(response, data);
-    }, function (e) {
-      // assume empty for non-JSON response with 2xx status
-      return handleResult(response, null, e);
-    });
-  });
-}
 function JSONClient(baseUrl, middleware) {
-  middleware = middleware || function (request, next) {
-    return next(request);
-  };
   this.baseUrl = baseUrl;
-  this.request = function (request, options) {
-    request = is(request, Request) || new Request(combinePath(baseUrl, request), options);
-    return middleware(request, fetchJSON);
-  };
+  this.request = createApiClient(baseUrl, {
+    request: middleware,
+    error: function error(_error) {
+      if (_error.status === 401) {
+        throw errorWithCode(invalidCredential);
+      }
+    }
+  });
 }
 each('get post put patch delete', function (i, v) {
-  var method = v.toUpperCase();
   defineHiddenProperty(JSONClient.prototype, v, function (path, body, options) {
-    return this.request(path, v === 'get' ? body : getOptionsWithBody(method, body, options));
+    return this.request[v](path, body, options);
   });
 });
 /* harmony default export */ var util_JSONClient = (JSONClient);
-;// CONCATENATED MODULE: ./src/util.js
+;// ./src/util.js
 
 
-;// CONCATENATED MODULE: ./src/index.js
+;// ./src/index.js
 
 
 
@@ -537,12 +502,11 @@ each('get post put patch delete', function (i, v) {
 
 
 
-;// CONCATENATED MODULE: ./src/entry.js
+;// ./src/entry.js
 
 
 Object.assign(src, src_namespaceObject);
 /* harmony default export */ var entry = (src);
-}();
 __webpack_exports__ = __webpack_exports__["default"];
 /******/ 	return __webpack_exports__;
 /******/ })()
