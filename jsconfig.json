@@ -11,7 +11,9 @@
         "baseUrl": ".",
         "paths": {
             "src/*": ["./src/*"],
+            "@misonou/brew-extension-auth": ["./src/index"],
             "zeta-dom/*": ["../zeta-dom/src/*", "node_modules/zeta-dom/*"],
+            "brew-js": ["../brew-js/src", "node_modules/brew-js"],
             "brew-js/*": ["../brew-js/src/*", "node_modules/brew-js/*"],
         }
     },

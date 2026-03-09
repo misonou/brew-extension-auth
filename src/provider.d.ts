@@ -46,7 +46,7 @@ export interface AuthProviderFactory {
      * @param key A unique key identifying the provider.
      * @param client A client that implements authentication request to server.
      */
-    from<K = string, T = any>(key: string, client: AuthClient<K, T>): AuthProvider<K, T>;
+    from<K extends string, T extends AuthProviderResult>(key: string, client: AuthClient<K, T>): AuthProvider<K, T>;
 }
 
 declare const AuthProvider: AuthProviderFactory;
