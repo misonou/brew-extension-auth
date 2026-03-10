@@ -1,4 +1,4 @@
-import { defineHiddenProperty, each, errorWithCode } from "zeta-dom/util";
+import { defineHiddenProperty, each } from "zeta-dom/util";
 import { createApiClient } from "brew-js/util/fetch";
 import * as AuthErrorCode from "../errorCode.js";
 
@@ -8,9 +8,13 @@ function JSONClient(baseUrl, middleware) {
         request: middleware,
         error: function (error) {
             if (error.status === 401) {
-                throw errorWithCode(AuthErrorCode.invalidCredential);
+                error.code = AuthErrorCode.invalidCredential;
             }
         }
+    });
+    this.request.use(function (req, next) {
+        req.headers.set('accept', 'application/json');
+        return next(req);
     });
 }
 

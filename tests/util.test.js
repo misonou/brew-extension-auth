@@ -14,6 +14,13 @@ function verifyRequestObject(request, expected) {
     }).toEqual(expect.objectContaining(expected));
 }
 
+function getResponseInit(status = 200) {
+    return {
+        status,
+        headers: { 'content-type': 'application/json' }
+    };
+}
+
 describe('JSONClient', () => {
     it('should set request with base URL and appropriate headers', async () => {
         await client.get('/a');
@@ -42,7 +49,7 @@ describe('JSONClient', () => {
         const mw = mockFn((req, next) => next(req).then(cb));
         const client = new JSONClient('http://test.com', mw);
 
-        fetch.mockResolvedValueOnce(new Response('{"data":{"foo":"bar"}}'));
+        fetch.mockResolvedValueOnce(new Response('{"data":{"foo":"bar"}}', getResponseInit()));
         await expect(client.get('/a')).resolves.toEqual({ foo: 'bar' });
 
         expect(mw).toHaveBeenCalledTimes(1);
@@ -59,16 +66,16 @@ describe('JSONClient', () => {
     });
 
     it('should throw error if response is not ok', async () => {
-        fetch.mockResolvedValueOnce(new Response('{"error":"foo"}', { status: 500 }));
+        fetch.mockResolvedValueOnce(new Response('{"error":"foo"}', getResponseInit(500)));
         await expect(client.get('/a')).rejects.toBeErrorWithCode('brew/api-error', { status: 500, data: { error: 'foo' } });
 
-        fetch.mockResolvedValueOnce(new Response('xxx', { status: 500 }));
+        fetch.mockResolvedValueOnce(new Response('xxx', getResponseInit(500)));
         await expect(client.get('/a')).rejects.toBeErrorWithCode('brew/api-error', { status: 500, data: undefined });
 
-        fetch.mockResolvedValueOnce(new Response('{"error":"foo"}', { status: 401 }));
+        fetch.mockResolvedValueOnce(new Response('{"error":"foo"}', getResponseInit(401)));
         await expect(client.get('/a')).rejects.toBeErrorWithCode('brew/auth-invalid-credential', { status: 401, data: { error: 'foo' } });
 
-        fetch.mockResolvedValueOnce(new Response('xxx'));
+        fetch.mockResolvedValueOnce(new Response('xxx', getResponseInit(200)));
         await expect(client.get('/a')).rejects.toBeErrorWithCode('brew/api-error', { status: 200, data: undefined });
     });
 });
