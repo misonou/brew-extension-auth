@@ -9,6 +9,7 @@ const MsalAuthProvider = {};
 const issuerCache = {};
 const multitenant = {
     common: true,
+    consumers: true,
     organizations: true
 };
 const defaultConfig = {
