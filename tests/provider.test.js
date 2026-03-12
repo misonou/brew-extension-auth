@@ -40,21 +40,32 @@ describe('AuthProvider', () => {
         });
         verifyCalls(initCalls, [[contextArg]]);
 
+        let last;
         jest.useFakeTimers();
         await app.login({ loginHint: 'foo', password: 'bar' });
         verifyCalls(authClient.login, [
             [expect.objectContaining({ loginHint: 'foo', password: 'bar' }), contextArg]
         ]);
+        last = await authClient.login.mock.results[0].value;
 
         jest.advanceTimersByTime(2000);
         await app.acquireToken();
         verifyCalls(authClient.refresh, [
-            [expect.objectContaining(providerResult), contextArg]
+            [expect.objectContaining({ expiresOn: last.expiresOn }), contextArg]
         ]);
+        last = await authClient.refresh.mock.results[0].value;
+        authClient.refresh.mockClear();
+
+        jest.advanceTimersByTime(2000);
+        await app.acquireToken();
+        verifyCalls(authClient.refresh, [
+            [expect.objectContaining({ expiresOn: last.expiresOn }), contextArg]
+        ]);
+        last = await authClient.refresh.mock.results[0].value;
 
         await app.logout();
         verifyCalls(authClient.logout, [
-            [expect.objectContaining({ accountId: providerResult.accountId }), contextArg]
+            [expect.objectContaining({ expiresOn: last.expiresOn }), contextArg]
         ]);
     });
 

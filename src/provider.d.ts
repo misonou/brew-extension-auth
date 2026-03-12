@@ -28,7 +28,7 @@ export interface AuthClient<K extends string, T extends AuthProviderResult> {
     /**
      * Performs logout.
      */
-    logout(params: AuthProviderLogoutRequest, context: AuthProviderContext): Promise<void>;
+    logout(current: AuthClientCachedResult<T>, context: AuthProviderContext): Promise<void>;
     /**
      * Refreshes current login session.
      */

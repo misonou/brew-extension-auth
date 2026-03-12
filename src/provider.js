@@ -47,7 +47,11 @@ const AuthProvider = {
                 return client.login(params, context).then(setCurrentData);
             },
             logout: function (params, context) {
-                return client.logout(params, context).then(setCurrentData.bind(0, undefined));
+                var cached = getCachedData();
+                if (!cached || cached.accountId !== params.accountId) {
+                    return resolve();
+                }
+                return client.logout(cached, context).then(setCurrentData.bind(0, undefined));
             },
             refresh: function (cached, context) {
                 return client.refresh(cached, context).then(setCurrentData);

@@ -53,8 +53,11 @@ export default class DirectusAuthClient implements AuthClient<"directus", Result
         return this.createResult(result);
     }
 
-    async logout() {
-        return this.client.post('/auth/logout');
+    async logout(params: AuthClientCachedResult<Result>) {
+        return this.client.post('/auth/logout', {
+            mode: 'json',
+            refresh_token: params.refreshToken
+        });
     }
 
     async refresh(params: AuthClientCachedResult<Result>) {

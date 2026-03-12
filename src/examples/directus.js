@@ -26,8 +26,11 @@ export default class DirectusAuthClient {
         return this.createResult(result);
     }
 
-    async logout() {
-        return this.client.post('/auth/logout');
+    async logout(params) {
+        return this.client.post('/auth/logout', {
+            mode: 'json',
+            refresh_token: params.refreshToken
+        });
     }
 
     async refresh(params) {
