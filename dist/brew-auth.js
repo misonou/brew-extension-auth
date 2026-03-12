@@ -1,4 +1,4 @@
-/*! @misonou/brew-extension-auth v0.5.1 | (c) misonou | https://misonou.github.io */
+/*! @misonou/brew-extension-auth v0.5.2 | (c) misonou | https://misonou.github.io */
 (function webpackUniversalModuleDefinition(root, factory) {
 	if(typeof exports === 'object' && typeof module === 'object')
 		module.exports = factory(require("brew-js"), require("zeta-dom"));
@@ -480,9 +480,13 @@ function JSONClient(baseUrl, middleware) {
     request: middleware,
     error: function error(_error) {
       if (_error.status === 401) {
-        throw errorWithCode(invalidCredential);
+        _error.code = invalidCredential;
       }
     }
+  });
+  this.request.use(function (req, next) {
+    req.headers.set('accept', 'application/json');
+    return next(req);
   });
 }
 each('get post put patch delete', function (i, v) {
