@@ -111,6 +111,17 @@ export interface AuthProviderLogoutRequest {
     singleLogout?: boolean;
 }
 
+export interface AuthProviderTokenRequest<T = any> {
+    /**
+     * Account object.
+     */
+    account?: T;
+    /**
+     * A string representating the user, usually user ID, to be cached in local storage.
+     */
+    accountId: string;
+}
+
 export interface AuthProviderContext {
     /**
      * Specifies the preferred way to logout.
@@ -176,14 +187,25 @@ export interface AuthProvider<K extends string = string, T = any> extends AuthPr
      */
     logout(params: AuthProviderLogoutRequest, context: AuthProviderContext): Promise<void>;
     /**
-     * Refreshes current login session.
+     * Refreshes a login session.
      */
-    refresh(current: AuthProviderResult<T>, context: AuthProviderContext): Promise<AuthProviderResult<T>>;
+    refresh(params: AuthProviderTokenRequest<T>, context: AuthProviderContext): Promise<AuthProviderResult<T>>;
     /**
      * Returns whether the authentication provider can process the request given the login hint.
      * @param loginHint Login hint, ususally user email, provided by user.
      */
     isHandleable(loginHint: string): boolean | Promise<boolean>;
+}
+
+export interface AuthIdentity {
+    /**
+     * A unique key identifying the provider.
+     */
+    readonly provider: string;
+    /**
+     * A string representating the user, usually user ID.
+     */
+    readonly accountId: string;
 }
 
 export interface AuthResult<K = string, T = any> {
@@ -352,6 +374,11 @@ export interface AuthContext<TUser = any> extends Brew.EventDispatcher<keyof Aut
      * @param callback A callback receiving access token, or `null` if user has not logged in, and a flag indicates whether a refresh could be tried.
      */
     acquireToken<T>(callback: (accessToken: string | null, retryable: boolean) => T): T | Promise<Awaited<T>>;
+    /**
+     * Gets access token for the specified user.
+     * @param account An object identifying the user with provider key and account ID.
+     */
+    acquireToken(account: AuthIdentity): Promise<string>;
     /**
      * Logs in using one of the authentication providers.
      * @param options Options for logging in. If multiple authentication providers exists, either `provider` or `loginHint` must be provided.

@@ -299,6 +299,7 @@ describe('app.acquireToken', () => {
         const cb = mockFn();
         await app.acquireToken(cb);
         verifyCalls(cb, [[null, false]]);
+        expect(authProvider.refresh).not.toHaveBeenCalled();
     });
 
     it('should return last access token and a retryable flag if it is not expired', async () => {
@@ -308,6 +309,7 @@ describe('app.acquireToken', () => {
         const cb = mockFn();
         await app.acquireToken(cb);
         verifyCalls(cb, [[providerResult.accessToken, true]]);
+        expect(authProvider.refresh).not.toHaveBeenCalled();
     });
 
     it('should return refreshed access token and an unretryable flag if it has expired', async () => {
@@ -376,6 +378,43 @@ describe('app.acquireToken', () => {
         jest.advanceTimersByTime(2000);
         await app.acquireToken();
         expect(authProvider.refresh).toHaveBeenCalledTimes(1);
+    });
+
+    it('should return access token for specified account', async () => {
+        await app.login(loginParams);
+
+        const newAccessToken = '__new_access_token__';
+        getAccessToken.mockReturnValueOnce(newAccessToken);
+        await expect(app.acquireToken({ provider: 'default', accountId: 'id2' })).resolves.toBe(newAccessToken);
+        verifyCalls(authProvider.refresh, [
+            [expect.objectContaining({ accountId: 'id2' }), authProvider.context],
+        ]);
+        authProvider.refresh.mockClear();
+
+        // reqesting current account
+        await expect(app.acquireToken({ provider: 'default', accountId: 'id' })).resolves.toBe(providerResult.accessToken);
+        expect(authProvider.refresh).not.toHaveBeenCalled();
+    });
+
+    it('should return access token for specified account if user is not logged in', async () => {
+        const newAccessToken = '__new_access_token__';
+        getAccessToken.mockReturnValueOnce(newAccessToken);
+        await expect(app.acquireToken({ provider: 'default', accountId: 'id2' })).resolves.toBe(newAccessToken);
+        verifyCalls(authProvider.refresh, [
+            [expect.objectContaining({ accountId: 'id2' }), authProvider.context],
+        ]);
+    });
+
+    it('should throw when provider parameter is invalid', async () => {
+        await expect(app.acquireToken({ provider: 'xxx' })).rejects.toBeErrorWithCode(ErrorCode.noProvider);
+    });
+
+    it('should throw when provider has failed to acquire token for account that is not active one', async () => {
+        await app.login(loginParams);
+
+        const error = new Error();
+        authProvider.refresh.mockRejectedValueOnce(error);
+        await expect(app.acquireToken({ provider: 'default', accountId: 'id2' })).rejects.toBe(error);
     });
 });
 

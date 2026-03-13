@@ -1,7 +1,8 @@
-import { EventType, PublicClientApplication } from "@azure/msal-browser";
+import { EventType, InteractionRequiredAuthError, PublicClientApplication } from "@azure/msal-browser";
 import { getJSON } from "brew-js/util/common";
 import { isSubPathOf } from "brew-js/util/path";
-import { define, extend, is, map } from "zeta-dom/util";
+import { define, errorWithCode, extend, is, map, reject } from "zeta-dom/util";
+import * as AuthError from "./errorCode.js";
 
 const AUTHORITY_URI = 'https://login.microsoftonline.com/';
 
@@ -40,6 +41,10 @@ function getIssuerURL(domain) {
  */
 function createProvider(key, client, options) {
     var scopes = options.scopes;
+
+    function getAccount(homeAccountId) {
+        return client.getAccount({ homeAccountId });
+    }
 
     function getAccountInfo(account) {
         return {
@@ -110,8 +115,14 @@ function createProvider(key, client, options) {
         handleLoginRedirect: function () {
             return client.handleRedirectPromise().then(handleResult);
         },
-        refresh: function (current, context) {
-            return refresh(current.account, context).then(handleResult);
+        refresh: function (params, context) {
+            var account = getAccount(params.accountId);
+            if (!account) {
+                return reject(errorWithCode(AuthError.userNotLoggedIn));
+            }
+            return refresh(account, context).then(handleResult, function (e) {
+                throw e instanceof InteractionRequiredAuthError ? errorWithCode(AuthError.userNotLoggedIn) : e;
+            });
         },
         login: function (params, context) {
             var request = {
@@ -127,9 +138,7 @@ function createProvider(key, client, options) {
             }
         },
         logout: function (params, context) {
-            var account = client.getAccount({
-                homeAccountId: params.accountId
-            });
+            var account = getAccount(params.accountId);
             clearInteractionStatus();
             if (params.interaction === 'popup') {
                 return client.logoutPopup({ account });

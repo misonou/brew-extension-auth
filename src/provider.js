@@ -1,5 +1,6 @@
 import { bind } from "zeta-dom/domUtil";
-import { catchAsync, exclude, noop, resolve } from "zeta-dom/util";
+import { catchAsync, errorWithCode, exclude, noop, reject, resolve } from "zeta-dom/util";
+import * as AuthError from "./errorCode.js";
 
 const AuthProvider = {
     from: function (key, client) {
@@ -63,7 +64,11 @@ const AuthProvider = {
                 }
                 return client.logout(cached, context).then(setCurrentData.bind(0, undefined));
             },
-            refresh: function (cached, context) {
+            refresh: function (params, context) {
+                var cached = getCachedData();
+                if (!cached || cached.accountId !== params.accountId) {
+                    return reject(errorWithCode(AuthError.userNotLoggedIn));
+                }
                 return client.refresh(cached, context).then(setCurrentData);
             },
             isHandleable: function (loginHint) {

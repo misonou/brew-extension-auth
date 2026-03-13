@@ -1,6 +1,6 @@
 import { addExtension } from "brew-js/app";
 import { combinePath } from "brew-js/util/path";
-import { always, catchAsync, defineObservableProperty, errorWithCode, extend, isErrorWithCode, isFunction, makeArray, makeAsync, map, mapRemove, pick, pipe, reject, resolve, resolveAll, throws } from "zeta-dom/util";
+import { always, catchAsync, defineObservableProperty, errorWithCode, extend, isError, isErrorWithCode, isFunction, makeArray, makeAsync, map, mapRemove, pick, pipe, reject, resolve, resolveAll, throws } from "zeta-dom/util";
 import { reportError } from "zeta-dom/dom";
 import * as AuthError from "./errorCode.js";
 
@@ -194,21 +194,32 @@ export default addExtension('auth', ['router'], function (app, options) {
                 return provider ? pick(provider, ['key', 'authType', 'providerType']) : null;
             });
         },
-        acquireToken: function (callback) {
-            var provider = currentProvider;
-            var result = currentResult;
-            var force = callback === true;
-            callback = isFunction(callback) || resolve;
+        acquireToken: function (params) {
+            var force = params === true;
+            var provider, callback;
+            if (params && params.provider) {
+                provider = findProvider(params) || errorWithCode(AuthError.noProvider);
+                params = isCurrent(provider, params) ? currentResult : params;
+            } else {
+                callback = isFunction(params);
+                provider = currentProvider;
+                params = currentResult;
+            }
+            if (isError(provider)) {
+                return reject(provider);
+            }
+            callback = callback || resolve;
             if (!provider) {
                 return callback(null, false);
             }
-            if (!force && currentResult.expiresOn > Date.now()) {
-                return callback(currentResult.accessToken, true);
+            if (!force && params.expiresOn > Date.now()) {
+                return callback(params.accessToken, true);
             }
-            return acquireToken(provider, currentResult).then(function (result) {
+            var throwOnError = force || params !== currentResult;
+            return acquireToken(provider, params).then(function (result) {
                 return callback(result.accessToken, false);
             }, function (error) {
-                return force ? throws(error) : callback(result.accessToken, false);
+                return throwOnError ? throws(error) : callback(params.accessToken, false);
             });
         },
         login: function (params) {
