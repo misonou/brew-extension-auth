@@ -116,9 +116,6 @@ function createProvider(key, client, options) {
             var account = client.getAccount({
                 homeAccountId: params.accountId
             });
-            if (!params.singleLogout) {
-                return client.clearCache({ account });
-            }
             clearInteractionStatus();
             if (params.interaction === 'popup') {
                 return client.logoutPopup({ account });
