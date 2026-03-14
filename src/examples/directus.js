@@ -5,6 +5,7 @@ import { createApiClient } from "brew-js/util/fetch";
 
 export default class DirectusAuthClient {
     constructor(baseUrl) {
+        this.baseUrl = baseUrl;
         this.authType = 'password';
         this.providerType = 'directus';
         this.client = createApiClient(baseUrl, {
@@ -52,6 +53,10 @@ export default class DirectusAuthClient {
         return {
             account: account,
             accountId: account.id,
+            username: account.email,
+            name: account.first_name + ' ' + account.last_name,
+            email: account.email,
+            avatarUrl: account.avatar && (this.baseUrl + '/assets/' + account.avatar),
             accessToken: data.access_token,
             refreshToken: data.refresh_token,
             expiresOn: Date.now() + data.expires

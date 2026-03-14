@@ -1,7 +1,7 @@
 import { EventType, PublicClientApplication } from "@azure/msal-browser";
 import { getJSON } from "brew-js/util/common";
 import { isSubPathOf } from "brew-js/util/path";
-import { define, extend, is } from "zeta-dom/util";
+import { define, extend, is, map } from "zeta-dom/util";
 
 const AUTHORITY_URI = 'https://login.microsoftonline.com/';
 
@@ -41,6 +41,16 @@ function getIssuerURL(domain) {
 function createProvider(key, client, options) {
     var scopes = options.scopes;
 
+    function getAccountInfo(account) {
+        return {
+            account: account,
+            accountId: account.homeAccountId,
+            username: account.username,
+            name: account.name,
+            email: account.idTokenClaims.email || account.username
+        };
+    }
+
     function refresh(account, context) {
         return client.acquireTokenSilent({
             redirectUri: context.redirectUri,
@@ -53,12 +63,10 @@ function createProvider(key, client, options) {
         if (result) {
             var account = result.account;
             client.setActiveAccount(account);
-            return {
-                account: account,
-                accountId: account.homeAccountId,
+            return extend(getAccountInfo(account), {
                 accessToken: result.accessToken,
                 expiresOn: result.expiresOn
-            };
+            });
         }
     }
 
@@ -86,6 +94,12 @@ function createProvider(key, client, options) {
                 }
             });
             return client.initialize();
+        },
+        getAllAccounts: function () {
+            var accounts = client.getAllAccounts();
+            return map(accounts, function (v) {
+                return v.idTokenClaims && getAccountInfo(v);
+            });
         },
         getActiveAccount: function (context) {
             var account = client.getActiveAccount();

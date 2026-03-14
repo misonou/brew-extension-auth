@@ -275,6 +275,23 @@ describe('app.logout', () => {
     });
 });
 
+describe('app.getAllAccounts', () => {
+    it('should return all accounts if provider supports getAllAccounts', async () => {
+        providers[1].getAllAccounts.mockReturnValueOnce([
+            { account: accounts.id1, accountId: 'id1' },
+            { account: accounts.id2, accountId: 'id2' },
+        ]);
+        providers[2].getAllAccounts.mockReturnValueOnce([
+            { account: accounts.id3, accountId: 'id3', username: 'id3_real', name: 'id3 name' },
+        ]);
+        await expect(app.getAllAccounts()).resolves.toEqual([
+            expect.objectContaining({ provider: providers[1].key, providerType: 'dummy', account: accounts.id1, accountId: 'id1', username: 'id1', name: 'id1' }),
+            expect.objectContaining({ provider: providers[1].key, providerType: 'dummy', account: accounts.id2, accountId: 'id2', username: 'id2', name: 'id2' }),
+            expect.objectContaining({ provider: providers[2].key, providerType: 'dummy', account: accounts.id3, accountId: 'id3', username: 'id3_real', name: 'id3 name' }),
+        ]);
+    });
+});
+
 describe('app.acquireToken', () => {
     it('should return null and an unretryable flag if user is not logged in', async () => {
         await expect(app.acquireToken()).resolves.toBeNull();

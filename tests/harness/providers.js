@@ -34,6 +34,7 @@ export function createProvider(key, authType, providerType, isHandleable) {
         authType,
         providerType,
         init: mockFn(async () => { }),
+        getAllAccounts: mockFn(async () => []),
         getActiveAccount: mockFn(async () => null),
         handleLoginRedirect: mockFn(async () => null),
         login: mockFn(async ({ loginHint } = {}) => createAuthResult(loginHint || 'id')),

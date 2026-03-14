@@ -1,11 +1,12 @@
 import { bind } from "zeta-dom/domUtil";
-import { exclude, noop, resolve } from "zeta-dom/util";
+import { catchAsync, exclude, noop, resolve } from "zeta-dom/util";
 
 const AuthProvider = {
     from: function (key, client) {
         var storage = window.localStorage;
         var storageKey = 'brew.auth.' + key;
         var storageKeyID = storageKey + '.id';
+        var currentData;
 
         function getCachedData() {
             try {
@@ -21,6 +22,7 @@ const AuthProvider = {
                 delete storage[storageKey];
                 delete storage[storageKeyID];
             }
+            currentData = data;
             return data;
         }
 
@@ -31,10 +33,18 @@ const AuthProvider = {
             init: function (context) {
                 bind(window, 'storage', function (e) {
                     if (e.storageArea === storage && ((e.key === storageKeyID && e.oldValue) || e.key === null)) {
+                        currentData = null;
                         context.revokeSession(e.oldValue);
                     }
                 });
                 return (client.init || noop).call(client, context);
+            },
+            getAllAccounts: function (context) {
+                if (currentData) {
+                    return [currentData];
+                }
+                var cached = getCachedData();
+                return cached && catchAsync(client.refresh(cached, context).then(setCurrentData));
             },
             getActiveAccount: function (context) {
                 var cached = getCachedData();

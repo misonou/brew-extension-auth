@@ -112,4 +112,9 @@ describe('AuthProvider', () => {
         }));
         expect(cb).toHaveBeenCalledTimes(1);
     });
+
+    it('should not throw when cached data is corrupted', async () => {
+        localStorage.setItem('brew.auth.default', 'corrupted');
+        await expect(app.getAllAccounts()).resolves.toEqual([]);
+    });
 });

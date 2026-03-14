@@ -31,9 +31,11 @@ export default class DirectusAuthClient implements AuthClient<"directus", Result
     readonly authType = 'password';
     readonly providerType = 'directus';
 
+    private readonly baseUrl: string;
     private readonly client: ApiClient;
 
     constructor(baseUrl: string) {
+        this.baseUrl = baseUrl;
         this.client = createApiClient(baseUrl, {
             data: v => v?.data,
             error: e => this.handleError(e)
@@ -79,6 +81,10 @@ export default class DirectusAuthClient implements AuthClient<"directus", Result
         return {
             account: account,
             accountId: account.id,
+            username: account.email,
+            name: account.first_name + ' ' + account.last_name,
+            email: account.email,
+            avatarUrl: account.avatar && (this.baseUrl + '/assets/' + account.avatar),
             accessToken: data.access_token,
             refreshToken: data.refresh_token,
             expiresOn: Date.now() + data.expires

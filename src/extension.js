@@ -1,6 +1,6 @@
 import { addExtension } from "brew-js/app";
 import { combinePath } from "brew-js/util/path";
-import { always, catchAsync, defineObservableProperty, errorWithCode, extend, isErrorWithCode, isFunction, makeArray, makeAsync, mapRemove, pick, pipe, reject, resolve, resolveAll, throws } from "zeta-dom/util";
+import { always, catchAsync, defineObservableProperty, errorWithCode, extend, isErrorWithCode, isFunction, makeArray, makeAsync, map, mapRemove, pick, pipe, reject, resolve, resolveAll, throws } from "zeta-dom/util";
 import { reportError } from "zeta-dom/dom";
 import * as AuthError from "./errorCode.js";
 
@@ -103,16 +103,31 @@ export default addExtension('auth', ['router'], function (app, options) {
         return provider && provider === currentProvider && result.accountId === currentResult.accountId;
     }
 
-    function handleLogin(provider, result) {
-        var resumed = previousState.provider === provider.key && previousState.accountId === result.accountId;
-        var data = {
+    function getAuthResult(provider, result) {
+        return {
             provider: provider.key,
             providerType: provider.providerType,
-            account: result.account
+            account: result.account,
+            accountId: result.accountId,
+            username: result.username || result.accountId,
+            name: result.name || result.username || result.accountId,
+            email: result.email || null,
+            avatarUrl: result.avatarUrl || null
         };
+    }
+
+    function resolveUser(provider, result) {
+        if (!options.resolveUser) {
+            return resolve(result.account);
+        }
+        return makeAsync(options.resolveUser)(getAuthResult(provider, result));
+    }
+
+    function handleLogin(provider, result) {
+        var resumed = previousState.provider === provider.key && previousState.accountId === result.accountId;
         currentProvider = provider;
         currentResult = result;
-        return (options.resolveUser ? makeAsync(options.resolveUser)(data) : resolve(data.account)).then(function (user) {
+        return resolveUser(provider, result).then(function (user) {
             setUser(user);
             popSessionState(provider.key, result.accountId);
             app.emit('login', {
@@ -162,6 +177,18 @@ export default addExtension('auth', ['router'], function (app, options) {
     }
 
     app.define({
+        getAllAccounts: function () {
+            var results = providers.map(function (provider) {
+                return callProviderGuarded(provider.getAllAccounts || provider.getActiveAccount, provider, contexts.get(provider)).then(function (results) {
+                    return makeArray(results).map(function (v) {
+                        return getAuthResult(provider, v);
+                    });
+                });
+            });
+            return resolveAll(results, function (arr) {
+                return map(arr, pipe);
+            });
+        },
         resolveAuthProvider: function (params) {
             return resolve(findProvider(params)).then(function (provider) {
                 return provider ? pick(provider, ['key', 'authType', 'providerType']) : null;

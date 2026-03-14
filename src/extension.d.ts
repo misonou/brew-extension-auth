@@ -39,15 +39,34 @@ export interface AuthEventMap<TUser> {
     sessionEnded: Zeta.ZetaAsyncHandleableEvent;
 }
 
-export interface AuthProviderResult<T = any> {
+export interface AuthProviderAccountInfo<T = any> {
     /**
      * Account info that will be passed to {@link AuthOptions.resolveUser}.
      */
     account: T;
     /**
-     * A string representating the user, usually user ID, to be cached in local storage.
+     * A string representating the user, usually user ID.
      */
     accountId: string;
+    /**
+     * Username for user.
+     */
+    username?: string;
+    /**
+     * Display name for user.
+     */
+    name?: string;
+    /**
+     * Email address for user.
+     */
+    email?: string;
+    /**
+     * URL for user's avatar, which can be used in UI to represent user.
+     */
+    avatarUrl?: string;
+}
+
+export interface AuthProviderResult<T = any> extends AuthProviderAccountInfo<T> {
     /**
      * Access token returned from authentication provider.
      * It will be exposed as {@link AuthContext.accessToken}.
@@ -137,6 +156,10 @@ export interface AuthProvider<K extends string = string, T = any> extends AuthPr
      */
     init(context: AuthProviderContext): void | Promise<void>;
     /**
+     * Gets all accounts that have login sessions.
+     */
+    getAllAccounts(context: AuthProviderContext): AuthProviderAccountInfo<T>[] | Promise<AuthProviderAccountInfo<T>[]>;
+    /**
      * Restores existing login session.
      */
     getActiveAccount(context: AuthProviderContext): AuthProviderResult<T> | null | undefined | Promise<AuthProviderResult<T> | null | undefined>;
@@ -176,6 +199,26 @@ export interface AuthResult<K = string, T = any> {
      * Identity returned from the provider.
      */
     readonly account: T;
+    /**
+     * A string representating the user, usually user ID.
+     */
+    readonly accountId: string;
+    /**
+     * Display name for user. If provider does not return display name, username or account ID will be used.
+     */
+    readonly name: string;
+    /**
+     * Username for user. If provider does not return username, account ID will be used.
+     */
+    readonly username: string;
+    /**
+     * Email address for user.
+     */
+    readonly email: string | null;
+    /**
+     * URL for user's avatar, which can be used in UI to represent user.
+     */
+    readonly avatarUrl: string | null;
 }
 
 export interface AuthOptions<TProviders extends readonly AuthProvider[], TUser = any> {
@@ -287,6 +330,10 @@ export interface AuthContext<TUser = any> extends Brew.EventDispatcher<keyof Aut
      */
     readonly user: TUser | null;
 
+    /**
+     * Gets all accounts that have login sessions.
+     */
+    getAllAccounts(): Promise<AuthResult[]>;
     /**
      * Resolves which authentication provider would be used based on the input.
      * @param hint A set of criteria.
