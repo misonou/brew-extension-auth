@@ -1,6 +1,6 @@
 import { addExtension } from "brew-js/app";
 import { combinePath } from "brew-js/util/path";
-import { catchAsync, defineObservableProperty, errorWithCode, extend, isErrorWithCode, isFunction, makeArray, makeAsync, mapRemove, pick, pipe, reject, resolve, resolveAll, throws } from "zeta-dom/util";
+import { always, catchAsync, defineObservableProperty, errorWithCode, extend, isErrorWithCode, isFunction, makeArray, makeAsync, mapRemove, pick, pipe, reject, resolve, resolveAll, throws } from "zeta-dom/util";
 import { reportError } from "zeta-dom/dom";
 import * as AuthError from "./errorCode.js";
 
@@ -17,6 +17,7 @@ export default addExtension('auth', ['router'], function (app, options) {
     var sessionCache = app.cache;
     var previousState = sessionCache.get(CACHE_KEY) || {};
     var isNewSession = performance.navigation.type === 0;
+    var initPromise;
     var currentProvider;
     var currentResult;
 
@@ -46,6 +47,16 @@ export default addExtension('auth', ['router'], function (app, options) {
         });
     }
 
+    function callProviderGuarded() {
+        var fn = callProviderGuarded.call.apply(callProviderGuarded.bind, arguments);
+        if (initPromise) {
+            return initPromise.then(function () {
+                return fn();
+            });
+        }
+        return makeAsync(fn)();
+    }
+
     function filterByProp(arr, key, value) {
         return value === undefined ? arr : arr.filter(function (v) {
             return v[key] === value;
@@ -62,7 +73,7 @@ export default addExtension('auth', ['router'], function (app, options) {
         if (params.loginHint) {
             return resolve(0).then(function next(index) {
                 var provider = matched[index];
-                return provider && resolve(provider.isHandleable(params.loginHint)).then(function (v) {
+                return provider && callProviderGuarded(provider.isHandleable, provider, params.loginHint).then(function (v) {
                     return v ? provider : next(index + 1);
                 });
             });
@@ -123,7 +134,7 @@ export default addExtension('auth', ['router'], function (app, options) {
     }
 
     function callProvider(provider, method, params, callback) {
-        var promise = makeAsync(provider[method]).call(provider, extend({}, providerParams, params), contexts.get(provider));
+        var promise = callProviderGuarded(provider[method], provider, extend({}, providerParams, params), contexts.get(provider));
         promise.catch(function () {
             sessionCache.delete(CACHE_KEY);
         });
@@ -147,7 +158,7 @@ export default addExtension('auth', ['router'], function (app, options) {
             if (!force && currentResult.expiresOn > Date.now()) {
                 return callback(currentResult.accessToken, true);
             }
-            return provider.refresh(currentResult, contexts.get(provider)).then(function (result) {
+            return callProviderGuarded(provider.refresh, provider, currentResult, contexts.get(provider)).then(function (result) {
                 if (currentProvider === provider) {
                     currentResult = result;
                 }
@@ -183,7 +194,11 @@ export default addExtension('auth', ['router'], function (app, options) {
     });
 
     app.beforeInit(function () {
-        return resolveAll(providers.map(initProvider), function (results) {
+        var promise = resolveAll(providers.map(initProvider));
+        initPromise = always(promise, function () {
+            initPromise = null;
+        });
+        return promise.then(function (results) {
             var index = providers.indexOf(findProvider(previousState));
             if (!results[index]) {
                 index = results.findIndex(pipe);

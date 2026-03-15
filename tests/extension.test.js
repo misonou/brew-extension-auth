@@ -30,6 +30,7 @@ let initCall;
 let initUser;
 let initError;
 let initAuthEvent;
+let loginBeforeInit;
 
 beforeAll(async () => {
     const authEventCb = mockFn();
@@ -51,6 +52,12 @@ beforeAll(async () => {
         });
         app.on('login', authEventCb);
         app.on('logout', authEventCb);
+
+        authProvider.init.mock.results[0].value.then(() => {
+            authProvider.login.mockRejectedValueOnce(new Error());
+        });
+        loginBeforeInit = app.login(loginParams);
+        loginBeforeInit.catch(_ => { });
     });
     await app.ready;
     providers.forEach(v => {
@@ -85,6 +92,10 @@ describe('Auth extension', () => {
 
     it('should not invoke login or logout event on start by default', () => {
         expect(initAuthEvent).not.toHaveBeenCalled();
+    });
+
+    it('should forward call to provider after init', async () => {
+        await expect(loginBeforeInit).rejects.toBeInstanceOf(Error);
     });
 });
 
