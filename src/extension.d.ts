@@ -62,6 +62,7 @@ export interface AuthProviderResult<T = any> {
 export interface AuthProviderLoginRequest {
     /**
      * Specifies the preferred way to login.
+     * @deprecated Retrievable from the {@link AuthProviderContext} object which is passed to provider as the last argument.
      */
     interaction: 'popup' | 'redirect';
     /**
@@ -77,6 +78,7 @@ export interface AuthProviderLoginRequest {
 export interface AuthProviderLogoutRequest {
     /**
      * Specifies the preferred way to logout.
+     * @deprecated Retrievable from the {@link AuthProviderContext} object which is passed to provider as the last argument.
      */
     interaction: 'popup' | 'redirect';
     /**
@@ -85,11 +87,16 @@ export interface AuthProviderLogoutRequest {
     accountId: string;
     /**
      * Whether user should be logged out completely from other applications for the same single sign-on session.
+     * @deprecated This option is not currently supported and will be removed in the future.
      */
     singleLogout?: boolean;
 }
 
 export interface AuthProviderContext {
+    /**
+     * Specifies the preferred way to logout.
+     */
+    readonly interaction: 'popup' | 'redirect';
     /**
      * Fully qualified URL for redirection after logging in or out through external authentication provider.
      */
@@ -265,6 +272,7 @@ export interface LoginOptions extends AuthProviderHint {
 export interface LogoutOptions {
     /**
      * Whether to also log out from other applications for the same single sign-on session.
+     * @deprecated This option is not currently supported and will be removed in the future.
      */
     singleLogout?: boolean
     /**

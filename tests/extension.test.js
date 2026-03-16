@@ -245,7 +245,7 @@ describe('app.logout', () => {
 
         await app.logout();
         verifyCalls(authProvider.logout, [
-            [expect.objectContaining({ accountId: providerResult.accountId, singleLogout: undefined }), authProvider.context]
+            [expect.objectContaining({ accountId: providerResult.accountId }), authProvider.context]
         ]);
     });
 

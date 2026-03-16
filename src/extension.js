@@ -24,6 +24,7 @@ export default addExtension('auth', ['router'], function (app, options) {
 
     function initProvider(provider) {
         var context = {
+            interaction: providerParams.interaction,
             redirectUri: redirectUri,
             revokeSession: function (accountId) {
                 if (currentProvider === provider && (!accountId || currentResult.accountId === accountId)) {
@@ -202,10 +203,7 @@ export default addExtension('auth', ['router'], function (app, options) {
             }
             params = params || {};
             setSessionState('', params.returnPath || options.postLogoutPath || app.path);
-            return callProvider(currentProvider, 'logout', {
-                accountId: currentResult.accountId,
-                singleLogout: params.singleLogout
-            }, handleLogout);
+            return callProvider(currentProvider, 'logout', pick(currentResult, ['accountId']), handleLogout);
         }
     });
 
