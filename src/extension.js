@@ -85,18 +85,37 @@ export default addExtension('auth', ['router'], function (app, options) {
         }
     }
 
-    function setSessionState(provider, returnPath) {
-        sessionCache.set(CACHE_KEY, { provider, returnPath });
+    function getCacheableState() {
+        return currentProvider && {
+            provider: currentProvider.key,
+            accountId: currentResult.accountId
+        };
     }
 
-    function popSessionState(provider, accountId) {
+    function setSessionState(provider, returnPath) {
+        var before = getCacheableState();
+        sessionCache.set(CACHE_KEY, { provider, returnPath, before });
+    }
+
+    function popSessionState() {
         var state = mapRemove(sessionCache, CACHE_KEY) || {};
-        if (state.provider === provider && state.returnPath) {
+        if (state.returnPath && state.provider === (currentProvider ? currentProvider.key : '')) {
             catchAsync(app.navigate(state.returnPath));
         }
-        if (provider) {
-            sessionCache.set(CACHE_KEY, { provider, accountId });
+        if (currentProvider) {
+            sessionCache.set(CACHE_KEY, getCacheableState());
+            currentProvider.setActiveAccount(currentResult, contexts.get(currentProvider));
         }
+    }
+
+    function setCurrentResult(provider, result) {
+        var previous = getCacheableState() || previousState.before || previousState;
+        var previousProvider = previous.provider && findProvider(previous);
+        if (previousProvider && provider !== previousProvider) {
+            previousProvider.setActiveAccount(null, contexts.get(previousProvider));
+        }
+        currentProvider = provider;
+        currentResult = result;
     }
 
     function isCurrent(provider, result) {
@@ -124,12 +143,12 @@ export default addExtension('auth', ['router'], function (app, options) {
     }
 
     function handleLogin(provider, result) {
+        var previousResult = currentResult;
         var resumed = previousState.provider === provider.key && previousState.accountId === result.accountId;
-        currentProvider = provider;
-        currentResult = result;
+        setCurrentResult(provider, result);
         return resolveUser(provider, result).then(function (user) {
             setUser(user);
-            popSessionState(provider.key, result.accountId);
+            popSessionState();
             app.emit('login', {
                 user: user,
                 sessionResumed: resumed,
@@ -137,17 +156,21 @@ export default addExtension('auth', ['router'], function (app, options) {
             });
             previousState = {};
         }, function (error) {
-            handleLogout();
+            if (previousResult) {
+                currentProvider = findProvider(previousResult);
+                currentResult = previousResult;
+            } else {
+                handleLogout();
+            }
             throw error;
         });
     }
 
     function handleLogout() {
         var user = app.user;
-        currentProvider = null;
-        currentResult = null;
+        setCurrentResult(null, null);
         setUser(null);
-        popSessionState('');
+        popSessionState();
         if (user || previousState.accountId) {
             app.emit('logout', { user });
         }
@@ -223,16 +246,21 @@ export default addExtension('auth', ['router'], function (app, options) {
             });
         },
         login: function (params) {
-            if (currentProvider) {
-                return reject(errorWithCode(AuthError.loggedIn));
-            }
             params = params || {};
             return resolve(findProvider(params)).then(function (provider) {
                 if (!provider) {
                     throw errorWithCode(AuthError.noProvider);
                 }
-                setSessionState(provider.key, params.returnPath || options.postLoginPath || app.path);
-                return callProvider(provider, 'login', pick(params, ['loginHint', 'password']), handleLogin.bind(0, provider));
+                if (isCurrent(provider, params)) {
+                    return resolve();
+                }
+                return always(params.accountId && acquireToken(provider, params), function (resolved, result) {
+                    if (resolved && result) {
+                        return handleLogin(provider, result);
+                    }
+                    setSessionState(provider.key, params.returnPath || options.postLoginPath || app.path);
+                    return callProvider(provider, 'login', pick(params, ['accountId', 'loginHint', 'password']), handleLogin.bind(0, provider));
+                });
             });
         },
         logout: function (params) {

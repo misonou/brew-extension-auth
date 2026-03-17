@@ -85,6 +85,10 @@ export interface AuthProviderLoginRequest {
      */
     interaction: 'popup' | 'redirect';
     /**
+     * Account ID associated to existing session.
+     */
+    accountId?: string;
+    /**
      * Login hint, usually user email, to be passed to external authentication provider.
      */
     loginHint?: string;
@@ -174,6 +178,10 @@ export interface AuthProvider<K extends string = string, T = any> extends AuthPr
      * Restores existing login session.
      */
     getActiveAccount(context: AuthProviderContext): AuthProviderResult<T> | null | undefined | Promise<AuthProviderResult<T> | null | undefined>;
+    /**
+     * Sets active account, so that current login session can be restored in the future.
+     */
+    setActiveAccount(account: AuthProviderResult<T> | null, context: AuthProviderContext): void;
     /**
      * Handles authentication result returned from external authentication provider during app initialization.
      */
@@ -385,6 +393,12 @@ export interface AuthContext<TUser = any> extends Brew.EventDispatcher<keyof Aut
      * @returns A promise which may resolve after logged in successfully.
      */
     login(options?: LoginOptions): Promise<void>;
+    /**
+     * Logs in as a specific user that has been previously authenticated.
+     * @param account An object identifying the user with provider key and account ID.
+     * @returns A promise which may resolve after logged in successfully.
+     */
+    login(account: AuthIdentity): Promise<void>;
     /**
      * Logs out the current user.
      * @param options Options for logging out.

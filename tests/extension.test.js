@@ -157,17 +157,44 @@ describe('app.login', () => {
         ]);
     });
 
+    it('should call provider\'s refresh method with specified account', async () => {
+        const cb = mockFn();
+        cleanup(app.on('login', cb));
+
+        authProvider.getAllAccounts.mockReturnValueOnce([{ account: accounts.id, accountId: 'id' }]);
+        const [account] = await app.getAllAccounts();
+
+        await expect(app.login(account)).resolves.toBeUndefined();
+        expect(app.user).toBe(accounts.id);
+        verifyCalls(cb, [
+            [expect.objectContaining({ type: 'login', user: accounts.id }), _]
+        ]);
+        verifyCalls(authProvider.refresh, [
+            [expect.objectContaining({ accountId: 'id' }), authProvider.context]
+        ]);
+    });
+
+    it('should not call provider\'s refresh method if current account is specified', async () => {
+        await app.login(loginParams);
+        resolveUser.mockClear();
+
+        const cb = mockFn();
+        cleanup(app.on('login', cb));
+        cleanup(app.on('sessionChange', cb));
+
+        await expect(app.login({ provider: 'default', accountId: 'id' })).resolves.toBeUndefined();
+        expect(app.user).toBe(accounts.id);
+        expect(cb).not.toHaveBeenCalled();
+        expect(resolveUser).not.toHaveBeenCalled();
+        expect(authProvider.refresh).not.toHaveBeenCalled();
+    });
+
     it('should throw error if no provider satifies login hints', async () => {
         authProvider.isHandleable.mockReturnValueOnce(false);
         await expect(app.login({ loginHint: 'foo' })).rejects.toBeErrorWithCode(ErrorCode.noProvider);
         await expect(app.login({ provider: 'foo' })).rejects.toBeErrorWithCode(ErrorCode.noProvider);
         await expect(app.login({ authType: 'federated' })).rejects.toBeErrorWithCode(ErrorCode.noProvider);
         await expect(app.login({ providerType: 'foo' })).rejects.toBeErrorWithCode(ErrorCode.noProvider);
-    });
-
-    it('should throw error if user is already logged in', async () => {
-        await app.login(loginParams);
-        await expect(app.login()).rejects.toBeErrorWithCode(ErrorCode.loggedIn);
     });
 
     it('should throw error if provider throws', async () => {
@@ -199,6 +226,7 @@ describe('app.login', () => {
 
         await app.login(loginParams);
         expect(cachedData).toEqual({
+            before: null,
             provider: 'default',
             returnPath: app.path
         });
@@ -217,10 +245,47 @@ describe('app.login', () => {
 
         await expect(app.login(loginParams)).rejects.toBeInstanceOf(Error);
         expect(cachedData).toEqual({
+            before: null,
             provider: 'default',
             returnPath: app.path
         });
         expect(app.cache.get('brew.auth')).toBeUndefined();
+    });
+
+    it('should not logout current user if login has failed', async () => {
+        await app.login(loginParams);
+
+        const user = app.user;
+        const error = new Error();
+        authProvider.login.mockRejectedValueOnce(error);
+
+        await expect(app.login({ loginHint: 'foo' })).rejects.toBe(error);
+        expect(app.user).toBe(user);
+
+        resolveUser.mockRejectedValueOnce(error);
+
+        await expect(app.login({ loginHint: 'foo' })).rejects.toBe(error);
+        expect(app.user).toBe(user);
+    });
+
+    it('should not logout current user if login has failed for specified account', async () => {
+        await app.login(loginParams);
+
+        authProvider.getAllAccounts.mockReturnValueOnce([{ account: {}, accountId: 'id2' }]);
+        const [account] = await app.getAllAccounts();
+
+        const user = app.user;
+        const error = new Error();
+        authProvider.refresh.mockRejectedValueOnce(error);
+        authProvider.login.mockRejectedValueOnce(error);
+
+        await expect(app.login(account)).rejects.toBe(error);
+        expect(app.user).toBe(user);
+
+        resolveUser.mockRejectedValueOnce(error);
+
+        await expect(app.login(account)).rejects.toBe(error);
+        expect(app.user).toBe(user);
     });
 });
 
@@ -268,8 +333,9 @@ describe('app.logout', () => {
         await app.login(loginParams);
         await app.logout();
         expect(cachedData).toEqual({
+            before: { accountId: 'id', provider: 'default' },
             provider: '',
-            returnPath: app.path
+            returnPath: app.path,
         });
         expect(app.cache.get('brew.auth')).toBeUndefined();
     });

@@ -65,14 +65,10 @@ function createProvider(key, client, options) {
     }
 
     function handleResult(result) {
-        if (result) {
-            var account = result.account;
-            client.setActiveAccount(account);
-            return extend(getAccountInfo(account), {
-                accessToken: result.accessToken,
-                expiresOn: result.expiresOn
-            });
-        }
+        return extend(getAccountInfo(result.account), {
+            accessToken: result.accessToken,
+            expiresOn: result.expiresOn
+        });
     }
 
     return {
@@ -112,6 +108,9 @@ function createProvider(key, client, options) {
                 client.setActiveAccount(null);
             });
         },
+        setActiveAccount: function (cached) {
+            client.setActiveAccount(cached && cached.account);
+        },
         handleLoginRedirect: function () {
             return client.handleRedirectPromise().then(handleResult);
         },
@@ -128,8 +127,12 @@ function createProvider(key, client, options) {
             var request = {
                 redirectUri: context.redirectUri,
                 loginHint: params.loginHint,
+                account: params.accountId && getAccount(params.accountId),
                 scopes: scopes
             };
+            if (client.getActiveAccount()) {
+                request.prompt = 'select_account';
+            }
             clearInteractionStatus();
             if (params.interaction === 'popup') {
                 return client.loginPopup(request).then(handleResult);

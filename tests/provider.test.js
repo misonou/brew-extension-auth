@@ -5,6 +5,7 @@ import AuthProvider from "src/provider";
 import { cleanup, cloneMockResult, mockFn, verifyCalls } from "@misonou/test-utils";
 import { accounts, createAuthResult, providerResult } from "./harness/providers";
 import { jest } from "@jest/globals";
+import * as AuthError from "src/errorCode";
 
 /** @type Brew.AppInstance<import("src").AuthContext<any>> */
 let app;
@@ -17,6 +18,7 @@ const authClient = {
     login: mockFn(async ({ loginHint } = {}) => createAuthResult(loginHint || 'id')),
     logout: mockFn(async () => { }),
     refresh: mockFn(async ({ accountId }) => createAuthResult(accountId)),
+    getAccountInfo: mockFn(({ id }) => ({ username: id })),
     isHandleable: mockFn(() => true)
 };
 
@@ -74,16 +76,36 @@ describe('AuthProvider', () => {
     });
 
     it('should cache session', async () => {
-        await app.login();
-        expect(JSON.parse(localStorage.getItem('brew.auth.default'))).toEqual({
-            accountId: 'id',
+        const expectedResult1 = {
+            accountId: 'id1',
             accessToken: providerResult.accessToken,
             expiresOn: expect.any(Number)
-        });
-        expect(localStorage.getItem('brew.auth.default.id')).toBe('id');
+        };
+        const expectedResult2 = {
+            accountId: 'id2',
+            accessToken: providerResult.accessToken,
+            expiresOn: expect.any(Number)
+        };
+
+        await app.login({ loginHint: 'id1' });
+        expect(JSON.parse(localStorage.getItem('brew.auth.default'))).toEqual([expectedResult1]);
+        expect(localStorage.getItem('brew.auth.default.id')).toBe('id1');
+
+        await app.login({ loginHint: 'id2' });
+
+        const cached2 = JSON.parse(localStorage.getItem('brew.auth.default'));
+        expect(cached2).toHaveLength(2);
+        expect(cached2).toContainEqual(expectedResult1);
+        expect(cached2).toContainEqual(expectedResult2);
+        expect(localStorage.getItem('brew.auth.default.id')).toBe('id2');
+
+        const allAccounts = await app.getAllAccounts();
+        expect(allAccounts).toHaveLength(2);
+        expect(allAccounts).toContainEqual(expect.objectContaining({ username: 'id1', accountId: 'id1', account: accounts.id1, provider: 'default' }));
+        expect(allAccounts).toContainEqual(expect.objectContaining({ username: 'id2', accountId: 'id2', account: accounts.id2, provider: 'default' }));
 
         await app.logout();
-        expect(localStorage.getItem('brew.auth.default')).toBeNull();
+        expect(JSON.parse(localStorage.getItem('brew.auth.default'))).toEqual([expectedResult1]);
         expect(localStorage.getItem('brew.auth.default.id')).toBeNull();
     });
 
@@ -93,11 +115,11 @@ describe('AuthProvider', () => {
         const cb = mockFn();
         cleanup(app.on('sessionEnded', cb));
 
-        const oldValue = localStorage.getItem('brew.auth.default.id');
-        localStorage.removeItem('brew.auth.default.id');
+        const oldValue = localStorage.getItem('brew.auth.default');
+        localStorage.setItem('brew.auth.default', '[]');
         window.dispatchEvent(new StorageEvent('storage', {
             storageArea: localStorage,
-            key: 'brew.auth.default.id',
+            key: 'brew.auth.default',
             oldValue: oldValue
         }));
         expect(cb).toHaveBeenCalledTimes(1);
@@ -110,7 +132,14 @@ describe('AuthProvider', () => {
             key: null,
             oldValue: null
         }));
-        expect(cb).toHaveBeenCalledTimes(1);
+        expect(cb).toHaveBeenCalledTimes(0);
+    });
+
+    it('should throw when refreshing token for user whose cached session is removed', async () => {
+        await app.login({ loginHint: 'id1' });
+        await app.login({ loginHint: 'id2' });
+        localStorage.setItem('brew.auth.default', '[]');
+        await expect(app.acquireToken({ provider: 'default', accountId: 'id1' })).rejects.toBeErrorWithCode(AuthError.userNotLoggedIn);
     });
 
     it('should not throw when cached data is corrupted', async () => {
