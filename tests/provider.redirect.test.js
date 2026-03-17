@@ -3,16 +3,15 @@ import Router from "brew-js/extension/router";
 import Auth from "src/extension";
 import AuthProvider from "src/provider";
 import { mockFn, verifyCalls } from "@misonou/test-utils";
-import { providerResult } from "./harness/providers";
-import { jest } from "@jest/globals";
+import { createAuthResult, providerResult } from "./harness/providers";
 
 const authClient = {
     authType: 'password',
     providerType: 'test',
-    handleLoginRedirect: mockFn(async () => ({ ...providerResult, expiresOn: jest.now() + 1000 })),
-    login: mockFn(async () => ({ ...providerResult, expiresOn: jest.now() + 1000 })),
+    handleLoginRedirect: mockFn(async () => createAuthResult('id')),
+    login: mockFn(async ({ loginHint } = {}) => createAuthResult(loginHint || 'id')),
     logout: mockFn(async () => { }),
-    refresh: mockFn(async () => ({ ...providerResult, expiresOn: jest.now() + 1000 })),
+    refresh: mockFn(async ({ accountId }) => createAuthResult(accountId)),
     isHandleable: mockFn(() => true)
 };
 

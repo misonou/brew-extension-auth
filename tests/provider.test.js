@@ -3,7 +3,7 @@ import Router from "brew-js/extension/router";
 import Auth from "src/extension";
 import AuthProvider from "src/provider";
 import { cleanup, cloneMockResult, mockFn, verifyCalls } from "@misonou/test-utils";
-import { providerResult } from "./harness/providers";
+import { accounts, createAuthResult, providerResult } from "./harness/providers";
 import { jest } from "@jest/globals";
 
 /** @type Brew.AppInstance<import("src").AuthContext<any>> */
@@ -14,9 +14,9 @@ const authClient = {
     authType: 'password',
     providerType: 'test',
     init: mockFn(async () => { }),
-    login: mockFn(async () => ({ ...providerResult, expiresOn: jest.now() + 1000 })),
+    login: mockFn(async ({ loginHint } = {}) => createAuthResult(loginHint || 'id')),
     logout: mockFn(async () => { }),
-    refresh: mockFn(async () => ({ ...providerResult, expiresOn: jest.now() + 1000 })),
+    refresh: mockFn(async ({ accountId }) => createAuthResult(accountId)),
     isHandleable: mockFn(() => true)
 };
 
@@ -31,6 +31,10 @@ beforeAll(async () => {
     });
     await app.ready;
     initCalls = cloneMockResult(authClient.init);
+});
+
+beforeEach(async () => {
+    await app.logout();
 });
 
 describe('AuthProvider', () => {
@@ -72,7 +76,7 @@ describe('AuthProvider', () => {
     it('should cache session', async () => {
         await app.login();
         expect(JSON.parse(localStorage.getItem('brew.auth.default'))).toEqual({
-            accountId: providerResult.accountId,
+            accountId: 'id',
             accessToken: providerResult.accessToken,
             expiresOn: expect.any(Number)
         });

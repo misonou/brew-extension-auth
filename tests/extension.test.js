@@ -7,7 +7,7 @@ import { waitFor } from "@testing-library/dom";
 import { catchAsync, errorWithCode, throws } from "zeta-dom/util";
 import dom from "zeta-dom/dom";
 import { jest } from "@jest/globals";
-import { createProvider, getAccessToken, providerResult } from "./harness/providers";
+import { accounts, createProvider, getAccessToken, providerResult } from "./harness/providers";
 
 function normalizeURL(url) {
     return new URL(url, location.origin).toString();
@@ -24,7 +24,7 @@ const providers = [
     createProvider('provider4', 'publicKey', 'dummy', false),
 ];
 const resolveUser = mockFn(v => v.account);
-const loginParams = { provider: 'default' };
+const loginParams = { provider: 'default', loginHint: 'id' };
 
 let initCall;
 let initUser;
@@ -138,9 +138,9 @@ describe('app.login', () => {
         cleanup(app.on('login', cb));
 
         await app.login(loginParams);
-        expect(app.user).toBe(providerResult.account);
+        expect(app.user).toBe(accounts.id);
         verifyCalls(cb, [
-            [expect.objectContaining({ type: 'login', user: providerResult.account }), _]
+            [expect.objectContaining({ type: 'login', user: accounts.id }), _]
         ]);
     });
 
@@ -235,7 +235,7 @@ describe('app.logout', () => {
         await app.logout();
         expect(app.user).toBeNull();
         verifyCalls(cb, [
-            [expect.objectContaining({ type: 'logout', user: providerResult.account }), _]
+            [expect.objectContaining({ type: 'logout', user: accounts.id }), _]
         ]);
     });
 
@@ -245,7 +245,7 @@ describe('app.logout', () => {
 
         await app.logout();
         verifyCalls(authProvider.logout, [
-            [expect.objectContaining({ accountId: providerResult.accountId }), authProvider.context]
+            [expect.objectContaining({ accountId: 'id' }), authProvider.context]
         ]);
     });
 
@@ -306,7 +306,7 @@ describe('app.acquireToken', () => {
         await app.acquireToken(cb);
         verifyCalls(cb, [[newAccessToken, false]]);
         verifyCalls(authProvider.refresh, [
-            [expect.objectContaining(providerResult), authProvider.context]
+            [expect.objectContaining({ accountId: 'id', accessToken: providerResult.accessToken }), authProvider.context]
         ]);
 
         await expect(app.acquireToken()).resolves.toBe(newAccessToken);
@@ -380,7 +380,7 @@ describe('AuthProviderContext.revokeSession', () => {
         const cb = mockFn();
         cleanup(app.on('sessionEnded', cb));
 
-        authProvider.context.revokeSession(providerResult.accountId);
+        authProvider.context.revokeSession('id');
         expect(cb).toHaveBeenCalledTimes(1);
         expect(app.user).toBeNull();
     });
@@ -391,7 +391,7 @@ describe('AuthProviderContext.revokeSession', () => {
         const cb = mockFn();
         cleanup(app.on('sessionEnded', cb));
 
-        authProvider.context.revokeSession(providerResult.accountId + '__');
+        authProvider.context.revokeSession('id_');
         expect(cb).not.toHaveBeenCalled();
         expect(app.user).toBeTruthy();
     });
