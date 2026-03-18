@@ -9,7 +9,7 @@
   "author": "misonou",
   "license": "ISC",
   "repository": "github:misonou/brew-extension-auth",
-  "homepage": "https://misonou.github.io",
+  "homepage": "https://misonou.pages.dev/brew-extension-auth",
   "dependencies": {
     "brew-js": ">=0.7.2",
     "zeta-dom": ">=0.5.1"
