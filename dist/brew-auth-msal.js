@@ -1,4 +1,4 @@
-/*! @misonou/brew-extension-auth v0.5.2 | (c) misonou | https://misonou.github.io */
+/*! @misonou/brew-extension-auth v0.5.3 | (c) misonou | https://misonou.github.io */
 (function webpackUniversalModuleDefinition(root, factory) {
 	if(typeof exports === 'object' && typeof module === 'object')
 		module.exports = factory(require("@azure/msal-browser"), require("brew-js"), require("zeta-dom"));
@@ -219,11 +219,6 @@ function createProvider(key, client, options) {
       var account = client.getAccount({
         homeAccountId: params.accountId
       });
-      if (!params.singleLogout) {
-        return client.clearCache({
-          account: account
-        });
-      }
       clearInteractionStatus();
       if (params.interaction === 'popup') {
         return client.logoutPopup({

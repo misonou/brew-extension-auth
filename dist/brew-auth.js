@@ -1,4 +1,4 @@
-/*! @misonou/brew-extension-auth v0.5.2 | (c) misonou | https://misonou.github.io */
+/*! @misonou/brew-extension-auth v0.5.3 | (c) misonou | https://misonou.github.io */
 (function webpackUniversalModuleDefinition(root, factory) {
 	if(typeof exports === 'object' && typeof module === 'object')
 		module.exports = factory(require("brew-js"), require("zeta-dom"));
@@ -126,6 +126,7 @@ var external_commonjs_zeta_dom_commonjs2_zeta_dom_amd_zeta_dom_root_zeta_ = __we
 ;// ./|umd|/zeta-dom/util.js
 
 var _lib$util = external_commonjs_zeta_dom_commonjs2_zeta_dom_amd_zeta_dom_root_zeta_.util,
+  always = _lib$util.always,
   catchAsync = _lib$util.catchAsync,
   defineHiddenProperty = _lib$util.defineHiddenProperty,
   defineObservableProperty = _lib$util.defineObservableProperty,
@@ -173,6 +174,7 @@ var CACHE_KEY = 'brew.auth';
   var sessionCache = app.cache;
   var previousState = sessionCache.get(CACHE_KEY) || {};
   var isNewSession = performance.navigation.type === 0;
+  var initPromise;
   var currentProvider;
   var currentResult;
   function initProvider(provider) {
@@ -200,6 +202,15 @@ var CACHE_KEY = 'brew.auth';
       }
     });
   }
+  function callProviderGuarded() {
+    var fn = callProviderGuarded.call.apply(callProviderGuarded.bind, arguments);
+    if (initPromise) {
+      return initPromise.then(function () {
+        return fn();
+      });
+    }
+    return makeAsync(fn)();
+  }
   function filterByProp(arr, key, value) {
     return value === undefined ? arr : arr.filter(function (v) {
       return v[key] === value;
@@ -215,7 +226,7 @@ var CACHE_KEY = 'brew.auth';
     if (params.loginHint) {
       return resolve(0).then(function next(index) {
         var provider = matched[index];
-        return provider && resolve(provider.isHandleable(params.loginHint)).then(function (v) {
+        return provider && callProviderGuarded(provider.isHandleable, provider, params.loginHint).then(function (v) {
           return v ? provider : next(index + 1);
         });
       });
@@ -279,7 +290,7 @@ var CACHE_KEY = 'brew.auth';
     previousState = {};
   }
   function callProvider(provider, method, params, callback) {
-    var promise = makeAsync(provider[method]).call(provider, extend({}, providerParams, params), contexts.get(provider));
+    var promise = callProviderGuarded(provider[method], provider, extend({}, providerParams, params), contexts.get(provider));
     promise["catch"](function () {
       sessionCache["delete"](CACHE_KEY);
     });
@@ -302,7 +313,7 @@ var CACHE_KEY = 'brew.auth';
       if (!force && currentResult.expiresOn > Date.now()) {
         return callback(currentResult.accessToken, true);
       }
-      return provider.refresh(currentResult, contexts.get(provider)).then(function (result) {
+      return callProviderGuarded(provider.refresh, provider, currentResult, contexts.get(provider)).then(function (result) {
         if (currentProvider === provider) {
           currentResult = result;
         }
@@ -337,7 +348,11 @@ var CACHE_KEY = 'brew.auth';
     }
   });
   app.beforeInit(function () {
-    return resolveAll(providers.map(initProvider), function (results) {
+    var promise = resolveAll(providers.map(initProvider));
+    initPromise = always(promise, function () {
+      initPromise = null;
+    });
+    return promise.then(function (results) {
       var index = providers.indexOf(findProvider(previousState));
       if (!results[index]) {
         index = results.findIndex(pipe);
