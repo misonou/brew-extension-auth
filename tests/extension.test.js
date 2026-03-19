@@ -140,7 +140,7 @@ describe('app.login', () => {
         await app.login(loginParams);
         expect(app.user).toBe(accounts.id);
         verifyCalls(cb, [
-            [expect.objectContaining({ type: 'login', user: accounts.id }), _]
+            [expect.objectContaining({ type: 'login', user: accounts.id, interaction: 'user' }), _]
         ]);
     });
 
@@ -167,7 +167,7 @@ describe('app.login', () => {
         await expect(app.login(account)).resolves.toBeUndefined();
         expect(app.user).toBe(accounts.id);
         verifyCalls(cb, [
-            [expect.objectContaining({ type: 'login', user: accounts.id }), _]
+            [expect.objectContaining({ type: 'login', user: accounts.id, interaction: 'user' }), _]
         ]);
         verifyCalls(authProvider.refresh, [
             [expect.objectContaining({ accountId: 'id' }), authProvider.context]
@@ -249,7 +249,7 @@ describe('app.login', () => {
             provider: 'default',
             returnPath: app.path
         });
-        expect(app.cache.get('brew.auth')).toBeUndefined();
+        expect(app.cache.get('brew.auth')).toBeNull();
     });
 
     it('should not logout current user if login has failed', async () => {
@@ -300,7 +300,7 @@ describe('app.logout', () => {
         await app.logout();
         expect(app.user).toBeNull();
         verifyCalls(cb, [
-            [expect.objectContaining({ type: 'logout', user: accounts.id }), _]
+            [expect.objectContaining({ type: 'logout', user: accounts.id, interaction: 'user' }), _]
         ]);
     });
 
@@ -490,9 +490,13 @@ describe('AuthProviderContext.revokeSession', () => {
 
         const cb = mockFn();
         cleanup(app.on('sessionEnded', cb));
+        cleanup(app.on('logout', cb));
 
         authProvider.context.revokeSession();
-        expect(cb).toHaveBeenCalledTimes(1);
+        verifyCalls(cb, [
+            [expect.objectContaining({ type: 'sessionEnded' }), _],
+            [expect.objectContaining({ type: 'logout', interaction: 'none' }), _],
+        ]);
         expect(app.user).toBeNull();
     });
 

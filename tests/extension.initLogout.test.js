@@ -28,7 +28,7 @@ describe('Auth extension', () => {
         await app.ready;
         expect(app.user).toBeNull();
         verifyCalls(cb, [
-            [expect.objectContaining({ user: null }), _]
+            [expect.objectContaining({ user: null, interaction: 'none' }), _]
         ]);
     });
 });

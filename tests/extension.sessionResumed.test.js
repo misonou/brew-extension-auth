@@ -41,7 +41,7 @@ describe('Auth extension', () => {
         await app.ready;
         expect(app.user).toEqual({ id: 'id2' });
         verifyCalls(cb, [
-            [expect.objectContaining({ sessionResumed: true, sessionChanged: false }), _]
+            [expect.objectContaining({ sessionResumed: true, sessionChanged: false, interaction: 'none' }), _]
         ]);
     });
 });

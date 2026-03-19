@@ -42,7 +42,7 @@ describe('Auth extension', () => {
         await app.ready;
         expect(app.user).toEqual({ id: 'id2' });
         verifyCalls(cb, [
-            [expect.objectContaining({ sessionResumed: false, sessionChanged: false }), _]
+            [expect.objectContaining({ sessionResumed: false, sessionChanged: false, interaction: 'redirect' }), _]
         ]);
         await waitFor(() => expect(app.path).toBe('/bar'));
     });

@@ -11,15 +11,27 @@ export interface AuthLoginEvent<TUser> extends Zeta.ZetaEventBase {
      */
     readonly user: TUser;
     /**
-     * Gets whether the user has been logged in in the same browser session.
-     * It is always `false` when `login` event is not fired on app start.
+     * Gets whether the same user has been logged in.
+     *
+     * The user can already be logged in in previous visit in the same tab; or the session is recovered from browser cache.
+     * It is always `false` when `login` event is not fired on app start, or when {@link AuthLoginEvent.sessionChanged} is `true`.
      */
     readonly sessionResumed: boolean;
     /**
-     * Gets whether the a different user was logged in in the same browser session.
-     * It is always `false` when `login` event is not fired on app start.
+     * Gets whether a different user has been logged in.
+     *
+     * It is always `false` when {@link AuthLoginEvent.sessionResumed} is `true`.
      */
     readonly sessionChanged: boolean;
+    /**
+     * Gets the way how the user is logged in.
+     *
+     * It has the following possible values:
+     * - `redirect`: user is logged in through redirection from external provider
+     * - `none`: user is logged in through session recovery without redirection
+     * - `user`: user is logged in through explicit login action in the current session
+     */
+    readonly interaction: 'redirect' | 'none' | 'user';
 }
 
 export interface AuthLogoutEvent<TUser> extends Zeta.ZetaEventBase {
@@ -31,6 +43,15 @@ export interface AuthLogoutEvent<TUser> extends Zeta.ZetaEventBase {
      * previous session is expired at the time current page is loaded.
      */
     readonly user: TUser | null;
+    /**
+     * Gets the way how the user is logged out.
+     *
+     * It has the following possible values:
+     * - `redirect`: user is logged out through redirection from external provider
+     * - `none`: user is logged out when the session is expired or revoked
+     * - `user`: user is logged out through explicit logout action in the current session
+     */
+    readonly interaction: 'redirect' | 'none' | 'user';
 }
 
 export interface AuthEventMap<TUser> {

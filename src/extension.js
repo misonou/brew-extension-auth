@@ -116,6 +116,7 @@ export default addExtension('auth', ['router'], function (app, options) {
         }
         currentProvider = provider;
         currentResult = result;
+        return previous;
     }
 
     function isCurrent(provider, result) {
@@ -144,15 +145,16 @@ export default addExtension('auth', ['router'], function (app, options) {
 
     function handleLogin(provider, result) {
         var previousResult = currentResult;
-        var resumed = previousState.provider === provider.key && previousState.accountId === result.accountId;
-        setCurrentResult(provider, result);
+        var previous = setCurrentResult(provider, result);
+        var resumed = (previous.provider === provider.key && previous.accountId === result.accountId) || (!previous.provider && app.readyState !== 'ready');
         return resolveUser(provider, result).then(function (user) {
             setUser(user);
             popSessionState();
             app.emit('login', {
                 user: user,
                 sessionResumed: resumed,
-                sessionChanged: !resumed && !!previousState.accountId
+                sessionChanged: !resumed && !!previous.accountId,
+                interaction: app.readyState === 'ready' ? 'user' : previousState.returnPath ? 'redirect' : 'none'
             });
             previousState = {};
         }, function (error) {
@@ -167,12 +169,16 @@ export default addExtension('auth', ['router'], function (app, options) {
     }
 
     function handleLogout() {
+        var previousProvider = currentProvider;
         var user = app.user;
         setCurrentResult(null, null);
         setUser(null);
         popSessionState();
         if (user || previousState.accountId) {
-            app.emit('logout', { user });
+            app.emit('logout', {
+                user: user,
+                interaction: previousProvider ? 'user' : previousState.returnPath ? 'redirect' : 'none'
+            });
         }
         previousState = {};
     }
@@ -194,7 +200,7 @@ export default addExtension('auth', ['router'], function (app, options) {
     function callProvider(provider, method, params, callback) {
         var promise = callProviderGuarded(provider[method], provider, extend({}, providerParams, params), contexts.get(provider));
         promise.catch(function () {
-            sessionCache.delete(CACHE_KEY);
+            sessionCache.set(CACHE_KEY, getCacheableState());
         });
         return promise.then(callback);
     }
