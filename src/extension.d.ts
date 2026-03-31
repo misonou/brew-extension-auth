@@ -283,7 +283,7 @@ export interface AuthContext<TUser = any> extends Brew.EventDispatcher<keyof Aut
      * Resolves which authentication provider would be used based on the input.
      * @param hint A set of criteria.
      */
-    resolveAuthProvider(hint: AuthProviderHint): Promise<AuthProviderInfo | undefined>;
+    resolveAuthProvider(hint: AuthProviderHint): Promise<AuthProviderInfo | null>;
     /**
      * Gets access token for the logged in user.
      * It will try to refresh access token if the current one is already expired.
