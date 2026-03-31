@@ -402,7 +402,7 @@ export interface AuthContext<TUser = any> extends Brew.EventDispatcher<keyof Aut
      * It will try to refresh access token if the current one is already expired.
      * @param callback A callback receiving access token, or `null` if user has not logged in, and a flag indicates whether a refresh could be tried.
      */
-    acquireToken<T>(callback: (accessToken: string | null, retryable: boolean) => T): T | Promise<Awaited<T>>;
+    acquireToken<T>(callback: (accessToken: string | null, retryable: boolean) => T): Promise<Awaited<T>>;
     /**
      * Gets access token for the specified user.
      * @param account An object identifying the user with provider key and account ID.

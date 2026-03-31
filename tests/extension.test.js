@@ -482,6 +482,16 @@ describe('app.acquireToken', () => {
         authProvider.refresh.mockRejectedValueOnce(error);
         await expect(app.acquireToken({ provider: 'default', accountId: 'id2' })).rejects.toBe(error);
     });
+
+    it('should always return promise', async () => {
+        await expect(app.acquireToken(v => v)).resolves.toBeNull();
+
+        await app.login(loginParams);
+        await expect(app.acquireToken(v => v)).resolves.toBeTruthy();
+
+        const error = new Error();
+        await expect(app.acquireToken(() => { throw error; })).rejects.toBe(error);
+    });
 });
 
 describe('AuthProviderContext.revokeSession', () => {

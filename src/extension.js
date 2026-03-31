@@ -237,12 +237,12 @@ export default addExtension('auth', ['router'], function (app, options) {
             if (isError(provider)) {
                 return reject(provider);
             }
-            callback = callback || resolve;
+            callback = callback || pipe;
             if (!provider) {
-                return callback(null, false);
+                return makeAsync(callback)(null, false);
             }
             if (!force && params.expiresOn > Date.now()) {
-                return callback(params.accessToken, true);
+                return makeAsync(callback)(params.accessToken, true);
             }
             var throwOnError = force || params !== currentResult;
             return acquireToken(provider, params).then(function (result) {
