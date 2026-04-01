@@ -344,6 +344,22 @@ describe('app.acquireToken', () => {
         authProvider.refresh.mockRejectedValueOnce(error);
         await expect(app.acquireToken(true)).rejects.toBe(error);
     });
+
+    it('should call refresh method once for multiple acquireToken calls when token is expired', async () => {
+        await app.login(loginParams);
+
+        jest.advanceTimersByTime(2000);
+        await Promise.all([
+            app.acquireToken(),
+            app.acquireToken(),
+        ]);
+        expect(authProvider.refresh).toHaveBeenCalledTimes(1);
+        authProvider.refresh.mockClear();
+
+        jest.advanceTimersByTime(2000);
+        await app.acquireToken();
+        expect(authProvider.refresh).toHaveBeenCalledTimes(1);
+    });
 });
 
 describe('AuthProviderContext.revokeSession', () => {

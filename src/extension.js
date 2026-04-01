@@ -17,6 +17,7 @@ export default addExtension('auth', ['router'], function (app, options) {
     var sessionCache = app.cache;
     var previousState = sessionCache.get(CACHE_KEY) || {};
     var isNewSession = performance.navigation.type === 0;
+    var refreshLocks = {};
     var initPromise;
     var currentProvider;
     var currentResult;
@@ -97,6 +98,10 @@ export default addExtension('auth', ['router'], function (app, options) {
         }
     }
 
+    function isCurrent(provider, result) {
+        return provider && provider === currentProvider && result.accountId === currentResult.accountId;
+    }
+
     function handleLogin(provider, result) {
         var resumed = previousState.provider === provider.key && previousState.accountId === result.accountId;
         var data = {
@@ -133,6 +138,20 @@ export default addExtension('auth', ['router'], function (app, options) {
         previousState = {};
     }
 
+    function acquireToken(provider, params) {
+        var key = provider.key + ':' + params.accountId;
+        if (!refreshLocks[key]) {
+            refreshLocks[key] = callProviderGuarded(provider.refresh, provider, params, contexts.get(provider));
+            always(refreshLocks[key], function (resolved, result) {
+                if (resolved && isCurrent(provider, params)) {
+                    currentResult = result;
+                }
+                delete refreshLocks[key];
+            });
+        }
+        return refreshLocks[key];
+    }
+
     function callProvider(provider, method, params, callback) {
         var promise = callProviderGuarded(provider[method], provider, extend({}, providerParams, params), contexts.get(provider));
         promise.catch(function () {
@@ -158,10 +177,7 @@ export default addExtension('auth', ['router'], function (app, options) {
             if (!force && currentResult.expiresOn > Date.now()) {
                 return callback(currentResult.accessToken, true);
             }
-            return callProviderGuarded(provider.refresh, provider, currentResult, contexts.get(provider)).then(function (result) {
-                if (currentProvider === provider) {
-                    currentResult = result;
-                }
+            return acquireToken(provider, currentResult).then(function (result) {
                 return callback(result.accessToken, false);
             }, function (error) {
                 return force ? throws(error) : callback(result.accessToken, false);
