@@ -1,4 +1,4 @@
-/*! @misonou/brew-extension-auth v0.5.3 | (c) misonou | https://misonou.github.io */
+/*! @misonou/brew-extension-auth v0.5.4 | (c) misonou | https://misonou.pages.dev/brew-extension-auth */
 (function webpackUniversalModuleDefinition(root, factory) {
 	if(typeof exports === 'object' && typeof module === 'object')
 		module.exports = factory(require("@azure/msal-browser"), require("brew-js"), require("zeta-dom"));
