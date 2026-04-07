@@ -1,4 +1,4 @@
-/*! @misonou/brew-extension-auth v0.5.4 | (c) misonou | https://misonou.pages.dev/brew-extension-auth */
+/*! @misonou/brew-extension-auth v0.6.0 | (c) misonou | https://misonou.pages.dev/brew-extension-auth */
 (function webpackUniversalModuleDefinition(root, factory) {
 	if(typeof exports === 'object' && typeof module === 'object')
 		module.exports = factory(require("@azure/msal-browser"), require("brew-js"), require("zeta-dom"));
@@ -104,10 +104,19 @@ var external_commonjs_zeta_dom_commonjs2_zeta_dom_amd_zeta_dom_root_zeta_ = __we
 
 var _lib$util = external_commonjs_zeta_dom_commonjs2_zeta_dom_amd_zeta_dom_root_zeta_.util,
   util_define = _lib$util.define,
+  errorWithCode = _lib$util.errorWithCode,
   extend = _lib$util.extend,
-  is = _lib$util.is;
+  is = _lib$util.is,
+  map = _lib$util.map,
+  reject = _lib$util.reject;
 
+;// ./src/errorCode.js
+var loggedIn = 'brew/auth-logged-in';
+var noProvider = 'brew/auth-no-provider';
+var userNotLoggedIn = 'brew/auth-user-not-logged-in';
+var invalidCredential = 'brew/auth-invalid-credential';
 ;// ./src/msal.js
+
 
 
 
@@ -146,6 +155,20 @@ function getIssuerURL(domain) {
  */
 function createProvider(key, client, options) {
   var scopes = options.scopes;
+  function getAccount(homeAccountId) {
+    return client.getAccount({
+      homeAccountId: homeAccountId
+    });
+  }
+  function getAccountInfo(account) {
+    return {
+      account: account,
+      accountId: account.homeAccountId,
+      username: account.username,
+      name: account.name,
+      email: account.idTokenClaims.email || account.username
+    };
+  }
   function _refresh(account, context) {
     return client.acquireTokenSilent({
       redirectUri: context.redirectUri,
@@ -154,16 +177,10 @@ function createProvider(key, client, options) {
     });
   }
   function handleResult(result) {
-    if (result) {
-      var account = result.account;
-      client.setActiveAccount(account);
-      return {
-        account: account,
-        accountId: account.homeAccountId,
-        accessToken: result.accessToken,
-        expiresOn: result.expiresOn
-      };
-    }
+    return extend(getAccountInfo(result.account), {
+      accessToken: result.accessToken,
+      expiresOn: result.expiresOn
+    });
   }
   return {
     key: key,
@@ -190,24 +207,43 @@ function createProvider(key, client, options) {
       });
       return client.initialize();
     },
+    getAllAccounts: function getAllAccounts() {
+      var accounts = client.getAllAccounts();
+      return map(accounts, function (v) {
+        return v.idTokenClaims && getAccountInfo(v);
+      });
+    },
     getActiveAccount: function getActiveAccount(context) {
       var account = client.getActiveAccount();
       return account && _refresh(account, context).then(handleResult, function () {
         client.setActiveAccount(null);
       });
     },
+    setActiveAccount: function setActiveAccount(cached) {
+      client.setActiveAccount(cached && cached.account);
+    },
     handleLoginRedirect: function handleLoginRedirect() {
       return client.handleRedirectPromise().then(handleResult);
     },
-    refresh: function refresh(current, context) {
-      return _refresh(current.account, context).then(handleResult);
+    refresh: function refresh(params, context) {
+      var account = getAccount(params.accountId);
+      if (!account) {
+        return reject(errorWithCode(userNotLoggedIn));
+      }
+      return _refresh(account, context).then(handleResult, function (e) {
+        throw e instanceof msal_browser_root_msal_.InteractionRequiredAuthError ? errorWithCode(userNotLoggedIn) : e;
+      });
     },
     login: function login(params, context) {
       var request = {
         redirectUri: context.redirectUri,
         loginHint: params.loginHint,
+        account: params.accountId && getAccount(params.accountId),
         scopes: scopes
       };
+      if (client.getActiveAccount()) {
+        request.prompt = 'select_account';
+      }
       clearInteractionStatus();
       if (params.interaction === 'popup') {
         return client.loginPopup(request).then(handleResult);
@@ -216,9 +252,7 @@ function createProvider(key, client, options) {
       }
     },
     logout: function logout(params, context) {
-      var account = client.getAccount({
-        homeAccountId: params.accountId
-      });
+      var account = getAccount(params.accountId);
       clearInteractionStatus();
       if (params.interaction === 'popup') {
         return client.logoutPopup({

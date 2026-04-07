@@ -1,4 +1,4 @@
-/*! @misonou/brew-extension-auth v0.5.4 | (c) misonou | https://misonou.pages.dev/brew-extension-auth */
+/*! @misonou/brew-extension-auth v0.6.0 | (c) misonou | https://misonou.pages.dev/brew-extension-auth */
 (function webpackUniversalModuleDefinition(root, factory) {
 	if(typeof exports === 'object' && typeof module === 'object')
 		module.exports = factory(require("brew-js"), require("zeta-dom"));
@@ -96,7 +96,8 @@ __webpack_require__.r(errorCode_namespaceObject);
 __webpack_require__.d(errorCode_namespaceObject, {
   invalidCredential: function() { return invalidCredential; },
   loggedIn: function() { return loggedIn; },
-  noProvider: function() { return noProvider; }
+  noProvider: function() { return noProvider; },
+  userNotLoggedIn: function() { return userNotLoggedIn; }
 });
 
 // NAMESPACE OBJECT: ./src/index.js
@@ -135,10 +136,12 @@ var _lib$util = external_commonjs_zeta_dom_commonjs2_zeta_dom_amd_zeta_dom_root_
   exclude = _lib$util.exclude,
   extend = _lib$util.extend,
   is = _lib$util.is,
+  isError = _lib$util.isError,
   isErrorWithCode = _lib$util.isErrorWithCode,
   isFunction = _lib$util.isFunction,
   makeArray = _lib$util.makeArray,
   makeAsync = _lib$util.makeAsync,
+  map = _lib$util.map,
   mapRemove = _lib$util.mapRemove,
   noop = _lib$util.noop,
   pick = _lib$util.pick,
@@ -155,6 +158,7 @@ var reportError = external_commonjs_zeta_dom_commonjs2_zeta_dom_amd_zeta_dom_roo
 ;// ./src/errorCode.js
 var loggedIn = 'brew/auth-logged-in';
 var noProvider = 'brew/auth-no-provider';
+var userNotLoggedIn = 'brew/auth-user-not-logged-in';
 var invalidCredential = 'brew/auth-invalid-credential';
 ;// ./src/extension.js
 
@@ -180,6 +184,7 @@ var CACHE_KEY = 'brew.auth';
   var currentResult;
   function initProvider(provider) {
     var context = {
+      interaction: providerParams.interaction,
       redirectUri: redirectUri,
       revokeSession: function revokeSession(accountId) {
         if (currentProvider === provider && (!accountId || currentResult.accountId === accountId)) {
@@ -236,59 +241,95 @@ var CACHE_KEY = 'brew.auth';
       return matched[0];
     }
   }
+  function getCacheableState() {
+    return currentProvider && {
+      provider: currentProvider.key,
+      accountId: currentResult.accountId
+    };
+  }
   function setSessionState(provider, returnPath) {
+    var before = getCacheableState();
     sessionCache.set(CACHE_KEY, {
       provider: provider,
-      returnPath: returnPath
+      returnPath: returnPath,
+      before: before
     });
   }
-  function popSessionState(provider, accountId) {
+  function popSessionState() {
     var state = mapRemove(sessionCache, CACHE_KEY) || {};
-    if (state.provider === provider && state.returnPath) {
+    if (state.returnPath && state.provider === (currentProvider ? currentProvider.key : '')) {
       catchAsync(app.navigate(state.returnPath));
     }
-    if (provider) {
-      sessionCache.set(CACHE_KEY, {
-        provider: provider,
-        accountId: accountId
-      });
+    if (currentProvider) {
+      sessionCache.set(CACHE_KEY, getCacheableState());
+      currentProvider.setActiveAccount(currentResult, contexts.get(currentProvider));
     }
+  }
+  function setCurrentResult(provider, result) {
+    var previous = getCacheableState() || previousState.before || previousState;
+    var previousProvider = previous.provider && findProvider(previous);
+    if (previousProvider && provider !== previousProvider) {
+      previousProvider.setActiveAccount(null, contexts.get(previousProvider));
+    }
+    currentProvider = provider;
+    currentResult = result;
+    return previous;
   }
   function isCurrent(provider, result) {
     return provider && provider === currentProvider && result.accountId === currentResult.accountId;
   }
-  function handleLogin(provider, result) {
-    var resumed = previousState.provider === provider.key && previousState.accountId === result.accountId;
-    var data = {
+  function getAuthResult(provider, result) {
+    return {
       provider: provider.key,
       providerType: provider.providerType,
-      account: result.account
+      account: result.account,
+      accountId: result.accountId,
+      username: result.username || result.accountId,
+      name: result.name || result.username || result.accountId,
+      email: result.email || null,
+      avatarUrl: result.avatarUrl || null
     };
-    currentProvider = provider;
-    currentResult = result;
-    return (options.resolveUser ? makeAsync(options.resolveUser)(data) : resolve(data.account)).then(function (user) {
+  }
+  function resolveUser(provider, result) {
+    if (!options.resolveUser) {
+      return resolve(result.account);
+    }
+    return makeAsync(options.resolveUser)(getAuthResult(provider, result));
+  }
+  function handleLogin(provider, result) {
+    var previousResult = currentResult;
+    var previous = setCurrentResult(provider, result);
+    var resumed = previous.provider === provider.key && previous.accountId === result.accountId || !previous.provider && app.readyState !== 'ready';
+    return resolveUser(provider, result).then(function (user) {
       setUser(user);
-      popSessionState(provider.key, result.accountId);
+      popSessionState();
       app.emit('login', {
         user: user,
         sessionResumed: resumed,
-        sessionChanged: !resumed && !!previousState.accountId
+        sessionChanged: !resumed && !!previous.accountId,
+        interaction: app.readyState === 'ready' ? 'user' : previousState.returnPath ? 'redirect' : 'none'
       });
       previousState = {};
     }, function (error) {
-      handleLogout();
+      if (previousResult) {
+        currentProvider = findProvider(previousResult);
+        currentResult = previousResult;
+      } else {
+        handleLogout();
+      }
       throw error;
     });
   }
   function handleLogout() {
+    var previousProvider = currentProvider;
     var user = app.user;
-    currentProvider = null;
-    currentResult = null;
+    setCurrentResult(null, null);
     setUser(null);
-    popSessionState('');
+    popSessionState();
     if (user || previousState.accountId) {
       app.emit('logout', {
-        user: user
+        user: user,
+        interaction: previousProvider ? 'user' : previousState.returnPath ? 'redirect' : 'none'
       });
     }
     previousState = {};
@@ -309,44 +350,72 @@ var CACHE_KEY = 'brew.auth';
   function callProvider(provider, method, params, callback) {
     var promise = callProviderGuarded(provider[method], provider, extend({}, providerParams, params), contexts.get(provider));
     promise["catch"](function () {
-      sessionCache["delete"](CACHE_KEY);
+      sessionCache.set(CACHE_KEY, getCacheableState());
     });
     return promise.then(callback);
   }
   app.define({
+    getAllAccounts: function getAllAccounts() {
+      var results = providers.map(function (provider) {
+        return callProviderGuarded(provider.getAllAccounts || provider.getActiveAccount, provider, contexts.get(provider)).then(function (results) {
+          return makeArray(results).map(function (v) {
+            return getAuthResult(provider, v);
+          });
+        });
+      });
+      return resolveAll(results, function (arr) {
+        return map(arr, pipe);
+      });
+    },
     resolveAuthProvider: function resolveAuthProvider(params) {
       return resolve(findProvider(params)).then(function (provider) {
         return provider ? pick(provider, ['key', 'authType', 'providerType']) : null;
       });
     },
-    acquireToken: function acquireToken(callback) {
-      var provider = currentProvider;
-      var result = currentResult;
-      var force = callback === true;
-      callback = isFunction(callback) || resolve;
+    acquireToken: function acquireToken(params) {
+      var force = params === true;
+      var provider, callback;
+      if (params && params.provider) {
+        provider = findProvider(params) || errorWithCode(noProvider);
+        params = isCurrent(provider, params) ? currentResult : params;
+      } else {
+        callback = isFunction(params);
+        provider = currentProvider;
+        params = currentResult;
+      }
+      if (isError(provider)) {
+        return reject(provider);
+      }
+      callback = callback || pipe;
       if (!provider) {
-        return callback(null, false);
+        return makeAsync(callback)(null, false);
       }
-      if (!force && currentResult.expiresOn > Date.now()) {
-        return callback(currentResult.accessToken, true);
+      if (!force && params.expiresOn > Date.now()) {
+        return makeAsync(callback)(params.accessToken, true);
       }
-      return _acquireToken(provider, currentResult).then(function (result) {
+      var throwOnError = force || params !== currentResult;
+      return _acquireToken(provider, params).then(function (result) {
         return callback(result.accessToken, false);
       }, function (error) {
-        return force ? _throws(error) : callback(result.accessToken, false);
+        return throwOnError ? _throws(error) : callback(params.accessToken, false);
       });
     },
     login: function login(params) {
-      if (currentProvider) {
-        return reject(errorWithCode(loggedIn));
-      }
       params = params || {};
       return resolve(findProvider(params)).then(function (provider) {
         if (!provider) {
           throw errorWithCode(noProvider);
         }
-        setSessionState(provider.key, params.returnPath || options.postLoginPath || app.path);
-        return callProvider(provider, 'login', pick(params, ['loginHint', 'password']), handleLogin.bind(0, provider));
+        if (isCurrent(provider, params)) {
+          return resolve();
+        }
+        return always(params.accountId && _acquireToken(provider, params), function (resolved, result) {
+          if (resolved && result) {
+            return handleLogin(provider, result);
+          }
+          setSessionState(provider.key, params.returnPath || options.postLoginPath || app.path);
+          return callProvider(provider, 'login', pick(params, ['accountId', 'loginHint', 'password']), handleLogin.bind(0, provider));
+        });
       });
     },
     logout: function logout(params) {
@@ -355,10 +424,7 @@ var CACHE_KEY = 'brew.auth';
       }
       params = params || {};
       setSessionState('', params.returnPath || options.postLogoutPath || app.path);
-      return callProvider(currentProvider, 'logout', {
-        accountId: currentResult.accountId,
-        singleLogout: params.singleLogout
-      }, handleLogout);
+      return callProvider(currentProvider, 'logout', pick(currentResult, ['accountId']), handleLogout);
     }
   });
   app.beforeInit(function () {
@@ -382,24 +448,45 @@ var bind = external_commonjs_zeta_dom_commonjs2_zeta_dom_amd_zeta_dom_root_zeta_
 ;// ./src/provider.js
 
 
+
 var AuthProvider = {
   from: function from(key, client) {
     var storage = window.localStorage;
     var storageKey = 'brew.auth.' + key;
     var storageKeyID = storageKey + '.id';
-    function getCachedData() {
-      try {
-        return JSON.parse(storage[storageKey]);
-      } catch (e) {}
+    var currentData;
+    function isAccountData(data, accountId) {
+      return data && data.accountId === accountId && data;
     }
-    function setCurrentData(data) {
-      if (data) {
-        storage[storageKey] = JSON.stringify(exclude(data, ['account']));
-        storage[storageKeyID] = data.accountId;
-      } else {
-        delete storage[storageKey];
-        delete storage[storageKeyID];
+    function parseCachedData(data) {
+      try {
+        return makeArray(JSON.parse(data || '[]'));
+      } catch (e) {
+        return [];
       }
+    }
+    function getCachedData(accountId) {
+      if (accountId !== undefined) {
+        return getCachedData().find(function (v) {
+          return isAccountData(v, accountId);
+        });
+      }
+      return parseCachedData(storage[storageKey]);
+    }
+    function setCachedData(data, remove) {
+      var cached = getCachedData();
+      var pos = cached.findIndex(function (v) {
+        return isAccountData(v, data.accountId);
+      });
+      if (!remove) {
+        cached.splice(pos, +(pos >= 0), exclude(data, ['account']));
+        if (isAccountData(currentData, data.accountId)) {
+          currentData = data;
+        }
+      } else if (pos >= 0) {
+        cached.splice(pos, 1);
+      }
+      storage[storageKey] = JSON.stringify(cached);
       return data;
     }
     return {
@@ -408,27 +495,61 @@ var AuthProvider = {
       providerType: client.providerType,
       init: function init(context) {
         bind(window, 'storage', function (e) {
-          if (e.storageArea === storage && (e.key === storageKeyID && e.oldValue || e.key === null)) {
-            context.revokeSession(e.oldValue);
+          if (e.storageArea === storage && e.key === storageKey) {
+            var newData = parseCachedData(e.newValue).map(function (v) {
+              return v.accountId;
+            });
+            each(parseCachedData(e.oldValue), function (i, v) {
+              if (newData.indexOf(v.accountId) < 0) {
+                context.revokeSession(v.accountId);
+              }
+            });
           }
         });
         return (client.init || noop).call(client, context);
       },
+      getAllAccounts: function getAllAccounts(context) {
+        var promise = getCachedData().map(function (v) {
+          return isAccountData(currentData, v.accountId) || catchAsync(client.refresh(v, context).then(setCachedData));
+        });
+        return resolveAll(promise, function (arr) {
+          return arr.filter(pipe);
+        });
+      },
       getActiveAccount: function getActiveAccount(context) {
-        var cached = getCachedData();
-        return cached && client.refresh(cached, context).then(setCurrentData);
+        var cached = getCachedData(storage[storageKeyID] || '');
+        return cached && client.refresh(cached, context).then(setCachedData);
+      },
+      setActiveAccount: function setActiveAccount(cached) {
+        if (!cached) {
+          currentData = null;
+          delete storage[storageKeyID];
+        } else {
+          currentData = cached;
+          storage[storageKeyID] = cached.accountId;
+        }
       },
       handleLoginRedirect: function handleLoginRedirect(context) {
-        return resolve((client.handleLoginRedirect || noop).call(client, context)).then(setCurrentData);
+        return resolve((client.handleLoginRedirect || noop).call(client, context)).then(function (v) {
+          return v && setCachedData(v);
+        });
       },
       login: function login(params, context) {
-        return client.login(params, context).then(setCurrentData);
+        return client.login(params, context).then(setCachedData);
       },
       logout: function logout(params, context) {
-        return client.logout(params, context).then(setCurrentData.bind(0, undefined));
+        var cached = isAccountData(currentData, params.accountId) || getCachedData(params.accountId);
+        if (!cached) {
+          return resolve();
+        }
+        return client.logout(cached, context).then(setCachedData.bind(0, cached, true));
       },
-      refresh: function refresh(cached, context) {
-        return client.refresh(cached, context).then(setCurrentData);
+      refresh: function refresh(params, context) {
+        var cached = isAccountData(currentData, params.accountId) || getCachedData(params.accountId);
+        if (!cached) {
+          return reject(errorWithCode(userNotLoggedIn));
+        }
+        return client.refresh(cached, context).then(setCachedData);
       },
       isHandleable: function isHandleable(loginHint) {
         return client.isHandleable(loginHint);
