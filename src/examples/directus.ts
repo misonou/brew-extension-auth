@@ -47,6 +47,9 @@ export default class DirectusAuthClient implements AuthClient<"directus", Result
     }
 
     async login(params: AuthProviderLoginRequest) {
+        if (!params.password) {
+            throw errorWithCode(AuthError.missingCredential);
+        }
         const result = await this.client.post('/auth/login', {
             mode: 'json',
             email: params.loginHint,
