@@ -117,6 +117,10 @@ export interface AuthProviderLoginRequest {
      * Password to be passed to authentication provider.
      */
     password?: string;
+    /**
+     * Whether to request passkey from user and use it for authentication.
+     */
+    passkey?: boolean;
 }
 
 export interface AuthProviderLogoutRequest {
@@ -361,6 +365,10 @@ export interface LoginOptions extends AuthProviderHint {
      * Password to be passed to authentication provider.
      */
     password?: string;
+    /**
+     * Whether to request passkey from user and use it for authentication.
+     */
+    passkey?: boolean;
     /**
      * Path to visit after logged in, overriding {@link AuthOptions.postLoginPath}.
      *

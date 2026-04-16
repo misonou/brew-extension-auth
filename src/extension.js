@@ -267,7 +267,7 @@ export default addExtension('auth', ['?router'], function (app, options) {
                         return handleLogin(provider, result);
                     }
                     setSessionState(provider.key, params.returnPath || options.postLoginPath || app.path || location.pathname);
-                    return callProvider(provider, 'login', pick(params, ['accountId', 'loginHint', 'password']), handleLogin.bind(0, provider));
+                    return callProvider(provider, 'login', pick(params, ['accountId', 'loginHint', 'password', 'passkey']), handleLogin.bind(0, provider));
                 });
             });
         },
