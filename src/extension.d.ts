@@ -174,8 +174,7 @@ export interface AuthProviderInfo {
     readonly key: string;
     /**
      * Authentication method used by the provider.
-     * - `federated` refers to federated identity provider, like an OpenID connect provider.
-     * - `publicKey` refers to passwordless authentication using key-pairs, commonly known as passkeys.
+     * @deprecated This field is not recommended for use as it does not accurately represent the capabilities of the provider.
      */
     readonly authType: AuthType;
     /**
@@ -338,6 +337,7 @@ export interface AuthProviderHint {
     /**
      * Authentication method used by the provider, to determine which authentication provider should be used when `provider` is not specified.
      * See {@link AuthProviderInfo.authType}.
+     * @deprecated This field is not recommended for use as it does not accurately represent the capabilities of the provider.
      */
     authType?: AuthType;
     /**

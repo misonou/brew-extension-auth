@@ -4,6 +4,7 @@ export type AuthClientCachedResult<T extends AuthProviderResult> = Omit<T, 'acco
 
 export interface AuthClient<K extends string, T extends AuthProviderResult> {
     /**
+     * @deprecated This field is not recommended for use as it does not accurately represent the capabilities of the provider.
      * @see {@link AuthProviderInfo.authType}
      */
     readonly authType: string;
