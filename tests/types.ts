@@ -1,6 +1,7 @@
 import { expectTypeOf } from "expect-type";
 import brew from "brew-js";
-import Auth, { AuthExtension, AuthProvider, AuthResult } from "../src/extension";
+import Auth, { AuthExtension, AuthProvider, AuthResult, AuthProviderResult } from "../src/extension";
+import { default as AuthProviderFactory, AuthClient } from "src/provider";
 
 declare const _: unknown;
 
@@ -13,6 +14,9 @@ interface ProviderAccount2 {
 interface User {
     id: string;
 }
+
+// -------------------------------------
+// extension.d.ts
 
 brew.with(Auth)(app => {
     app.useAuth({
@@ -61,3 +65,8 @@ brew.with(<AuthExtension<User>>Auth)(app => {
         expectTypeOf(e.user).toEqualTypeOf<User | null>();
     });
 });
+
+// -------------------------------------
+// provider.d.ts
+
+expectTypeOf(AuthProviderFactory.from('test', <AuthClient<'key', AuthProviderResult<User>>>_)).toEqualTypeOf<AuthProvider<'key', User>>();
