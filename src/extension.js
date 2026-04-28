@@ -1,7 +1,7 @@
 import { addExtension } from "brew-js/app";
 import { combinePath } from "brew-js/util/path";
 import { createObjectStorage } from "brew-js/util/storage";
-import { always, catchAsync, defineObservableProperty, errorWithCode, extend, isError, isErrorWithCode, isFunction, makeArray, makeAsync, map, mapRemove, pick, pipe, reject, resolve, resolveAll, throws } from "zeta-dom/util";
+import { always, catchAsync, defineObservableProperty, errorWithCode, extend, isError, isErrorWithCode, isFunction, makeArray, makeAsync, map, mapRemove, pick, pipe, reject, resolve, resolveAll, retryable, throws } from "zeta-dom/util";
 import { reportError } from "zeta-dom/dom";
 import * as AuthError from "./errorCode.js";
 
@@ -27,6 +27,7 @@ export default addExtension('auth', ['?router'], function (app, options) {
         var context = {
             interaction: providerParams.interaction,
             redirectUri: redirectUri,
+            challenge: function () { },
             revokeSession: function (accountId) {
                 if (currentProvider === provider && (!accountId || currentResult.accountId === accountId)) {
                     currentProvider = null;
@@ -199,12 +200,39 @@ export default addExtension('auth', ['?router'], function (app, options) {
         return refreshLocks[key];
     }
 
-    function callProvider(provider, method, params, callback) {
-        var promise = callProviderGuarded(provider[method], provider, extend({}, providerParams, params), contexts.get(provider));
+    function callProvider(provider, method, params, context) {
+        var promise = callProviderGuarded(provider[method], provider, extend({}, providerParams, params), context || contexts.get(provider));
         promise.catch(function () {
             sessionCache.set(CACHE_KEY, getCacheableState());
         });
-        return promise.then(callback);
+        return promise;
+    }
+
+    function runWithChallenge(provider, params, callback) {
+        return new Promise(function (resolve, reject) {
+            var sendResult = resolve;
+            var challenge = function (challenge, value, callback) {
+                return new Promise(function (resolve, reject) {
+                    if (params.silent) {
+                        return reject(errorWithCode(AuthError.challengeRequired));
+                    }
+                    callback = retryable(callback || pipe, resolve);
+                    sendResult({
+                        challenge: challenge,
+                        value: value,
+                        continueWith: function (response) {
+                            return new Promise(function (resolve, reject) {
+                                sendResult = resolve;
+                                callback(response).then(null, reject);
+                            });
+                        }
+                    });
+                });
+            };
+            callback(extend({}, contexts.get(provider), { challenge })).then(function (result) {
+                sendResult(result);
+            }, reject);
+        });
     }
 
     app.define({
@@ -267,7 +295,9 @@ export default addExtension('auth', ['?router'], function (app, options) {
                         return handleLogin(provider, result);
                     }
                     setSessionState(provider.key, params.returnPath || options.postLoginPath || app.path || location.pathname);
-                    return callProvider(provider, 'login', pick(params, ['accountId', 'loginHint', 'password', 'passkey']), handleLogin.bind(0, provider));
+                    return runWithChallenge(provider, params, function (context) {
+                        return callProvider(provider, 'login', pick(params, ['accountId', 'loginHint', 'password', 'passkey']), context).then(handleLogin.bind(0, provider));
+                    });
                 });
             });
         },
@@ -277,7 +307,7 @@ export default addExtension('auth', ['?router'], function (app, options) {
             }
             params = params || {};
             setSessionState('', params.returnPath || options.postLogoutPath || app.path || location.pathname);
-            return callProvider(currentProvider, 'logout', pick(currentResult, ['accountId']), handleLogout);
+            return callProvider(currentProvider, 'logout', pick(currentResult, ['accountId'])).then(handleLogout);
         }
     });
 

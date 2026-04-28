@@ -2,12 +2,12 @@ import brew from "brew-js/app";
 import Router from "brew-js/extension/router";
 import Auth from "src/extension";
 import * as ErrorCode from "src/errorCode";
-import { _, cleanup, mockFn, verifyCalls, cloneMockResult } from "@misonou/test-utils";
+import { _, cleanup, mockFn, verifyCalls, cloneMockResult, delay } from "@misonou/test-utils";
 import { waitFor } from "@testing-library/dom";
 import { catchAsync, errorWithCode, throws } from "zeta-dom/util";
 import dom from "zeta-dom/dom";
 import { jest } from "@jest/globals";
-import { accounts, createProvider, getAccessToken, providerResult } from "./harness/providers";
+import { accounts, createAuthResult, createProvider, getAccessToken, providerResult } from "./harness/providers";
 
 function normalizeURL(url) {
     return new URL(url, location.origin).toString();
@@ -153,7 +153,7 @@ describe('app.login', () => {
     it('should call provider\'s login method with login hint and passowrd if supplied', async () => {
         await app.login({ loginHint: 'foo', password: 'bar' });
         verifyCalls(authProvider.login, [
-            [expect.objectContaining({ loginHint: 'foo', password: 'bar' }), authProvider.context]
+            [expect.objectContaining({ loginHint: 'foo', password: 'bar' }), _]
         ]);
     });
 
@@ -286,6 +286,110 @@ describe('app.login', () => {
 
         await expect(app.login(account)).rejects.toBe(error);
         expect(app.user).toBe(user);
+    });
+
+    it('should return challenge without logging in user', async () => {
+        const cb = mockFn().mockReturnValue(createAuthResult(loginParams.loginHint));
+        authProvider.login.mockImplementationOnce(async (params, context) => {
+            return context.challenge('challenge1', 'value1', cb);
+        });
+
+        const challenge = await app.login(loginParams);
+        expect(challenge).toEqual({
+            challenge: 'challenge1',
+            value: 'value1',
+            continueWith: expect.any(Function)
+        });
+        expect(app.user).toBeNull();
+
+        await expect(challenge.continueWith('response1')).resolves.toBeUndefined();
+        verifyCalls(cb, [['response1']]);
+        expect(app.user).toBe(accounts.id);
+    });
+
+    it('should handle multiple challenges', async () => {
+        authProvider.login.mockImplementationOnce(async (params, context) => {
+            await expect(context.challenge('challenge1', 'value1')).resolves.toBe('response1');
+            await expect(context.challenge('challenge2', 'value2')).resolves.toBe('response2');
+            return createAuthResult(params.loginHint);
+        });
+
+        const challenge1 = await app.login(loginParams);
+        expect(challenge1).toEqual({
+            challenge: 'challenge1',
+            value: 'value1',
+            continueWith: expect.any(Function)
+        });
+        expect(app.user).toBeNull();
+
+        const challenge2 = await challenge1.continueWith('response1');
+        expect(challenge2).toEqual({
+            challenge: 'challenge2',
+            value: 'value2',
+            continueWith: expect.any(Function)
+        });
+        expect(app.user).toBeNull();
+
+        await expect(challenge2.continueWith('response2')).resolves.toBeUndefined();
+        expect(app.user).toBe(accounts.id);
+    });
+
+    it('should handle challenge from challenge response handler', async () => {
+        authProvider.login.mockImplementationOnce(async (params, context) => {
+            return context.challenge('challenge1', 'value1', () => {
+                return context.challenge('challenge2', 'value2', () => {
+                    return createAuthResult(params.loginHint);
+                });
+            });
+        });
+
+        const challenge1 = await app.login(loginParams);
+        expect(challenge1).toEqual({
+            challenge: 'challenge1',
+            value: 'value1',
+            continueWith: expect.any(Function)
+        });
+        expect(app.user).toBeNull();
+
+        const challenge2 = await challenge1.continueWith('response1');
+        expect(challenge2).toEqual({
+            challenge: 'challenge2',
+            value: 'value2',
+            continueWith: expect.any(Function)
+        });
+        expect(app.user).toBeNull();
+
+        await expect(challenge2.continueWith('response2')).resolves.toBeUndefined();
+        expect(app.user).toBe(accounts.id);
+    });
+
+    it('should invoke challenge response handler until response is accepted', async () => {
+        const error = new Error();
+        const cb = mockFn().mockReturnValue(createAuthResult(loginParams.loginHint));
+        authProvider.login.mockImplementationOnce(async (params, context) => {
+            return context.challenge('challenge1', 'value1', cb);
+        });
+
+        const challenge = await app.login(loginParams);
+        cb.mockImplementationOnce(() => { throw error; });
+
+        await expect(challenge.continueWith('response1')).rejects.toBe(error);
+        await expect(challenge.continueWith('response2')).resolves.toBeUndefined();
+        expect(app.user).toBe(accounts.id);
+
+        await app.logout();
+        challenge.continueWith('response3'); // does not resolve
+
+        await delay();
+        expect(app.user).toBeNull();
+        verifyCalls(cb, [['response1'], ['response2']]);
+    });
+
+    it('should throw when challenge is required but silent parameter is true', async () => {
+        authProvider.login.mockImplementationOnce(async (params, context) => {
+            return context.challenge('challenge1', 'value1');
+        });
+        await expect(app.login({ ...loginParams, silent: true })).rejects.toBeErrorWithCode(ErrorCode.challengeRequired);
     });
 });
 

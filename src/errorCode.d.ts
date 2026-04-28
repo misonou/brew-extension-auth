@@ -29,3 +29,7 @@ export declare const missingCredential: "brew/auth-missing-credential";
  * Authentication providers should use this error code when appropriate.
  */
 export declare const invalidCredential: "brew/auth-invalid-credential";
+/**
+ * Indicates a challenge is required, normally in multi-factor authentication, but the `silent` option is set to `true`.
+ */
+export declare const challengeRequired: "brew/auth-challenge-required";

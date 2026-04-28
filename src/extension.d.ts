@@ -3,7 +3,11 @@ import { Extension } from "brew-js/core";
 export type AuthExtension<T> = Extension<AuthContext<T>>;
 export type AuthEvent<TUser> = AuthLoginEvent<TUser> | AuthLogoutEvent<TUser>;
 export type AuthType = 'password' | 'federated' | 'publicKey';
+export type AuthChallengeType = 'select-channel' | 'totp' | 'otp-sms' | 'otp-email' | 'mobile-app' | 'magic-link' | 'captcha' | 'security-question' | 'biometric';
 export type ResolveUserCallback<TProvider, TUser> = (context: TProvider extends AuthProvider<infer K, infer T> ? AuthResult<K, T> : AuthResult) => TUser | Promise<TUser>;
+
+type AuthChallengeValue<T> = T extends AuthChallenge<any, infer V, any> ? V : any;
+type AuthChallengeResponse<T> = T extends AuthChallenge<any, any, infer V> ? V : any;
 
 export interface AuthLoginEvent<TUser> extends Zeta.ZetaEventBase {
     /**
@@ -121,6 +125,10 @@ export interface AuthProviderLoginRequest {
      * Whether to request passkey from user and use it for authentication.
      */
     passkey?: boolean;
+    /**
+     * Whether challenges that requires user interaction should be avoided.
+     */
+    silent?: boolean;
 }
 
 export interface AuthProviderLogoutRequest {
@@ -160,6 +168,21 @@ export interface AuthProviderContext {
      * Fully qualified URL for redirection after logging in or out through external authentication provider.
      */
     readonly redirectUri: string;
+    /**
+     * Initiates a login challenge, typically when multi-factor authentication is required.
+     * @param challenge Type of challenge to initiate.
+     * @param value Value associated with the challenge.
+     * @returns A promise that resolves to the value being passed to {@link AuthChallenge.continueWith}.
+     */
+    challenge<T extends AuthChallenge>(challenge: T['challenge'], value: AuthChallengeValue<T>): Promise<AuthChallengeResponse<T>>;
+    /**
+     * Initiates a login challenge, typically when multi-factor authentication is required.
+     * @param challenge Type of challenge to initiate.
+     * @param value Value associated with the challenge.
+     * @param callback A callback function to handle the challenge response. It should throw or returns a rejected promise if the response is invalid, in this case, caller can retry with another response. To end the challenge without retry, callback should return a dedicated value and handle outside of the callback.
+     * @returns A promise the resolves to the value returned by the callback.
+     */
+    challenge<T extends AuthChallenge, R>(challenge: T['challenge'], value: AuthChallengeValue<T>, callback: (response: AuthChallengeResponse<T>) => R | Promise<R>): Promise<R>;
     /**
      * Revokes login session, typically when user has signed out elsewhere.
      *
@@ -213,7 +236,7 @@ export interface AuthProvider<K extends string = string, T = any> extends AuthPr
     /**
      * Performs login.
      */
-    login(params: AuthProviderLoginRequest, context: AuthProviderContext): Promise<AuthProviderResult<T>>;
+    login(params: AuthProviderLoginRequest, context: AuthProviderContext): Promise<AuthProviderResult<T> | AuthChallenge>;
     /**
      * Performs logout.
      */
@@ -273,6 +296,23 @@ export interface AuthResult<K = string, T = any> {
      * URL for user's avatar, which can be used in UI to represent user.
      */
     readonly avatarUrl: string | null;
+}
+
+export interface AuthChallenge<K extends string = Zeta.HintedString<AuthChallengeType>, T = any, V = any> {
+    /**
+     * Type of challenge initiated by authentication provider.
+     */
+    readonly challenge: K;
+    /**
+     * Value associated with the challenge, which typically contains options or hints that can be used to render appropriate UI for user to respond.
+     */
+    readonly value: T;
+    /**
+     * Continues to process the challenge with user response.
+     * @param response User response to the challenge, which will be passed to authentication provider for verification. The type of response required depends on provider's implementation.
+     * @returns A promise that resolves to another challenge if additional steps are needed, or resolves to `void` if the process is completed.
+     */
+    continueWith(response: V): Promise<undefined | AuthChallenge>;
 }
 
 export interface AuthOptions<TProviders extends readonly AuthProvider[], TUser = any> {
@@ -370,6 +410,10 @@ export interface LoginOptions extends AuthProviderHint {
      */
     passkey?: boolean;
     /**
+     * Whether challenges that requires user interaction should be avoided.
+     */
+    silent?: boolean;
+    /**
      * Path to visit after logged in, overriding {@link AuthOptions.postLoginPath}.
      *
      * This option has no effect when router extension is not loaded unless the method `app.navigate` is implemented on the app instance.
@@ -427,15 +471,15 @@ export interface AuthContext<TUser = any> extends Brew.EventDispatcher<keyof Aut
     /**
      * Logs in using one of the authentication providers.
      * @param options Options for logging in. If multiple authentication providers exists, either `provider` or `loginHint` must be provided.
-     * @returns A promise which may resolve after logged in successfully.
+     * @returns A promise which may resolve after logged in successfully, or a challenge object if additional steps are required typically when multi-factor authentication (MFA) is enabled.
      */
-    login(options?: LoginOptions): Promise<void>;
+    login(options?: LoginOptions): Promise<undefined | AuthChallenge>;
     /**
      * Logs in as a specific user that has been previously authenticated.
      * @param account An object identifying the user with provider key and account ID.
-     * @returns A promise which may resolve after logged in successfully.
+     * @returns A promise which may resolve after logged in successfully, or a challenge object if additional steps are required typically when multi-factor authentication (MFA) is enabled.
      */
-    login(account: AuthIdentity): Promise<void>;
+    login(account: AuthIdentity): Promise<undefined | AuthChallenge>;
     /**
      * Logs out the current user.
      * @param options Options for logging out.
