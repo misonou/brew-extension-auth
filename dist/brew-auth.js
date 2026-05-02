@@ -1,4 +1,4 @@
-/*! @misonou/brew-extension-auth v0.6.0 | (c) misonou | https://misonou.pages.dev/brew-extension-auth */
+/*! @misonou/brew-extension-auth v0.6.1 | (c) misonou | https://misonou.pages.dev/brew-extension-auth */
 (function webpackUniversalModuleDefinition(root, factory) {
 	if(typeof exports === 'object' && typeof module === 'object')
 		module.exports = factory(require("brew-js"), require("zeta-dom"));
@@ -96,6 +96,7 @@ __webpack_require__.r(errorCode_namespaceObject);
 __webpack_require__.d(errorCode_namespaceObject, {
   invalidCredential: function() { return invalidCredential; },
   loggedIn: function() { return loggedIn; },
+  missingCredential: function() { return missingCredential; },
   noProvider: function() { return noProvider; },
   userNotLoggedIn: function() { return userNotLoggedIn; }
 });
@@ -159,6 +160,7 @@ var reportError = external_commonjs_zeta_dom_commonjs2_zeta_dom_amd_zeta_dom_roo
 var loggedIn = 'brew/auth-logged-in';
 var noProvider = 'brew/auth-no-provider';
 var userNotLoggedIn = 'brew/auth-user-not-logged-in';
+var missingCredential = 'brew/auth-missing-credential';
 var invalidCredential = 'brew/auth-invalid-credential';
 ;// ./src/extension.js
 
