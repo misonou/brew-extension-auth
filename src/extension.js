@@ -1,20 +1,21 @@
 import { addExtension } from "brew-js/app";
 import { combinePath } from "brew-js/util/path";
+import { createObjectStorage } from "brew-js/util/storage";
 import { always, catchAsync, defineObservableProperty, errorWithCode, extend, isError, isErrorWithCode, isFunction, makeArray, makeAsync, map, mapRemove, pick, pipe, reject, resolve, resolveAll, throws } from "zeta-dom/util";
 import { reportError } from "zeta-dom/dom";
 import * as AuthError from "./errorCode.js";
 
 const CACHE_KEY = 'brew.auth';
 
-export default addExtension('auth', ['router'], function (app, options) {
+export default addExtension('auth', ['?router'], function (app, options) {
     var setUser = defineObservableProperty(app, 'user', null, true);
     var providers = makeArray(options.providers || options.provider);
     var providerParams = {
         interaction: options.interaction || 'redirect',
     };
     var contexts = new Map();
-    var redirectUri = combinePath(location.origin, app.toHref('/'));
-    var sessionCache = app.cache;
+    var redirectUri = combinePath(location.origin, app.route ? app.toHref('/') : location.pathname);
+    var sessionCache = app.cache || createObjectStorage(sessionStorage, 'brew.auth');
     var previousState = sessionCache.get(CACHE_KEY) || {};
     var isNewSession = performance.navigation.type === 0;
     var refreshLocks = {};
@@ -99,7 +100,8 @@ export default addExtension('auth', ['router'], function (app, options) {
 
     function popSessionState() {
         var state = mapRemove(sessionCache, CACHE_KEY) || {};
-        if (state.returnPath && state.provider === (currentProvider ? currentProvider.key : '')) {
+        var isCurrent = state.provider === (currentProvider ? currentProvider.key : '');
+        if (isCurrent && state.returnPath && app.navigate) {
             catchAsync(app.navigate(state.returnPath));
         }
         if (currentProvider) {
@@ -264,7 +266,7 @@ export default addExtension('auth', ['router'], function (app, options) {
                     if (resolved && result) {
                         return handleLogin(provider, result);
                     }
-                    setSessionState(provider.key, params.returnPath || options.postLoginPath || app.path);
+                    setSessionState(provider.key, params.returnPath || options.postLoginPath || app.path || location.pathname);
                     return callProvider(provider, 'login', pick(params, ['accountId', 'loginHint', 'password']), handleLogin.bind(0, provider));
                 });
             });
@@ -274,7 +276,7 @@ export default addExtension('auth', ['router'], function (app, options) {
                 return resolve(handleLogout());
             }
             params = params || {};
-            setSessionState('', params.returnPath || options.postLogoutPath || app.path);
+            setSessionState('', params.returnPath || options.postLogoutPath || app.path || location.pathname);
             return callProvider(currentProvider, 'logout', pick(currentResult, ['accountId']), handleLogout);
         }
     });

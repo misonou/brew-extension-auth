@@ -284,11 +284,15 @@ export interface AuthOptions<TProviders extends readonly AuthProvider[], TUser =
     /**
      * Default path to visit after logged in.
      * If not specified, user will be redirected to current path.
+     *
+     * This option has no effect when router extension is not loaded unless the method `app.navigate` is implemented on the app instance.
      */
     postLoginPath?: string;
     /**
      * Default path to visit after logged out.
      * If not specified, user will be redirected to current path.
+     *
+     * This option has no effect when router extension is not loaded unless the method `app.navigate` is implemented on the app instance.
      */
     postLogoutPath?: string;
     /**
@@ -358,7 +362,9 @@ export interface LoginOptions extends AuthProviderHint {
      */
     password?: string;
     /**
-     * Path to visit after logged in.
+     * Path to visit after logged in, overriding {@link AuthOptions.postLoginPath}.
+     *
+     * This option has no effect when router extension is not loaded unless the method `app.navigate` is implemented on the app instance.
      */
     returnPath?: string;
 }
@@ -370,7 +376,9 @@ export interface LogoutOptions {
      */
     singleLogout?: boolean
     /**
-     * Path to visit after logged out.
+     * Path to visit after logged out, overriding {@link AuthOptions.postLogoutPath}.
+     *
+     * This option has no effect when router extension is not loaded unless the method `app.navigate` is implemented on the app instance.
      */
     returnPath?: string;
 }
