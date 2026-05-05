@@ -36,6 +36,10 @@ export interface AuthLoginEvent<TUser> extends Zeta.ZetaEventBase {
      * - `user`: user is logged in through explicit login action in the current session
      */
     readonly interaction: 'redirect' | 'none' | 'user';
+    /**
+     * Gets the state passed in {@link LoginOptions.state} when login action is triggered. Default is `null` when no state is passed.
+     */
+    readonly state: any;
 }
 
 export interface AuthLogoutEvent<TUser> extends Zeta.ZetaEventBase {
@@ -56,6 +60,10 @@ export interface AuthLogoutEvent<TUser> extends Zeta.ZetaEventBase {
      * - `user`: user is logged out through explicit logout action in the current session
      */
     readonly interaction: 'redirect' | 'none' | 'user';
+    /**
+     * Gets the state passed in {@link LogoutOptions.state} when logout action is triggered. Default is `null` when no state is passed.
+     */
+    readonly state: any;
 }
 
 export interface AuthEventMap<TUser> {
@@ -419,6 +427,11 @@ export interface LoginOptions extends AuthProviderHint {
      * This option has no effect when router extension is not loaded unless the method `app.navigate` is implemented on the app instance.
      */
     returnPath?: string;
+    /**
+     * State that will be passed to `login` event after login is successful.
+     * In case of redirection, the state will be recovered from browser cache.
+     */
+    state?: any;
 }
 
 export interface LogoutOptions {
@@ -433,6 +446,11 @@ export interface LogoutOptions {
      * This option has no effect when router extension is not loaded unless the method `app.navigate` is implemented on the app instance.
      */
     returnPath?: string;
+    /**
+     * State that will be passed to `logout` event after logout is successful.
+     * In case of redirection, the state will be recovered from browser cache.
+     */
+    state?: any;
 }
 
 export interface AuthContext<TUser = any> extends Brew.EventDispatcher<keyof AuthEventMap<TUser>, AuthEventMap<TUser>> {

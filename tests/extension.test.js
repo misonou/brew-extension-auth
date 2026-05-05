@@ -140,7 +140,18 @@ describe('app.login', () => {
         await app.login(loginParams);
         expect(app.user).toBe(accounts.id);
         verifyCalls(cb, [
-            [expect.objectContaining({ type: 'login', user: accounts.id, interaction: 'user' }), _]
+            [expect.objectContaining({ type: 'login', user: accounts.id, interaction: 'user', state: null }), _]
+        ]);
+    });
+
+    it('should emit login event with relay state', async () => {
+        const cb = mockFn();
+        cleanup(app.on('login', cb));
+
+        await app.login({ ...loginParams, state: { foo: 'bar' } });
+        expect(app.user).toBe(accounts.id);
+        verifyCalls(cb, [
+            [expect.objectContaining({ type: 'login', user: accounts.id, interaction: 'user', state: { foo: 'bar' } }), _]
         ]);
     });
 
@@ -404,7 +415,21 @@ describe('app.logout', () => {
         await app.logout();
         expect(app.user).toBeNull();
         verifyCalls(cb, [
-            [expect.objectContaining({ type: 'logout', user: accounts.id, interaction: 'user' }), _]
+            [expect.objectContaining({ type: 'logout', user: accounts.id, interaction: 'user', state: null }), _]
+        ]);
+    });
+
+    it('should emit logout event with relay state', async () => {
+        await app.login(loginParams);
+        expect(app.user).toBeTruthy();
+
+        const cb = mockFn();
+        cleanup(app.on('logout', cb));
+
+        await app.logout({ state: { foo: 'bar' } });
+        expect(app.user).toBeNull();
+        verifyCalls(cb, [
+            [expect.objectContaining({ type: 'logout', user: accounts.id, interaction: 'user', state: { foo: 'bar' } }), _]
         ]);
     });
 
