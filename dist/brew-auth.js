@@ -1,4 +1,4 @@
-/*! @misonou/brew-extension-auth v0.6.2 | (c) misonou | https://misonou.pages.dev/brew-extension-auth */
+/*! @misonou/brew-extension-auth v0.7.0 | (c) misonou | https://misonou.pages.dev/brew-extension-auth */
 (function webpackUniversalModuleDefinition(root, factory) {
 	if(typeof exports === 'object' && typeof module === 'object')
 		module.exports = factory(require("brew-js"), require("zeta-dom"));
@@ -94,6 +94,7 @@ __webpack_require__.d(__webpack_exports__, {
 var errorCode_namespaceObject = {};
 __webpack_require__.r(errorCode_namespaceObject);
 __webpack_require__.d(errorCode_namespaceObject, {
+  challengeRequired: function() { return challengeRequired; },
   invalidCredential: function() { return invalidCredential; },
   loggedIn: function() { return loggedIn; },
   missingCredential: function() { return missingCredential; },
@@ -111,7 +112,9 @@ __webpack_require__.d(src_namespaceObject, {
   JSONClient: function() { return util_JSONClient; },
   createAxiosMiddleware: function() { return createAxiosMiddleware; },
   createFetchMiddleware: function() { return createFetchMiddleware; },
-  "default": function() { return src; }
+  createPasskey: function() { return createPasskey; },
+  "default": function() { return src; },
+  requestPasskey: function() { return requestPasskey; }
 });
 
 // EXTERNAL MODULE: external {"commonjs":"brew-js","commonjs2":"brew-js","amd":"brew-js","root":"brew"}
@@ -123,6 +126,10 @@ var addExtension = external_commonjs_brew_js_commonjs2_brew_js_amd_brew_js_root_
 ;// ./|umd|/brew-js/util/path.js
 
 var combinePath = external_commonjs_brew_js_commonjs2_brew_js_amd_brew_js_root_brew_.combinePath;
+
+;// ./|umd|/brew-js/util/storage.js
+
+var createObjectStorage = external_commonjs_brew_js_commonjs2_brew_js_amd_brew_js_root_brew_.createObjectStorage;
 
 // EXTERNAL MODULE: external {"commonjs":"zeta-dom","commonjs2":"zeta-dom","amd":"zeta-dom","root":"zeta"}
 var external_commonjs_zeta_dom_commonjs2_zeta_dom_amd_zeta_dom_root_zeta_ = __webpack_require__(231);
@@ -141,16 +148,21 @@ var _lib$util = external_commonjs_zeta_dom_commonjs2_zeta_dom_amd_zeta_dom_root_
   isError = _lib$util.isError,
   isErrorWithCode = _lib$util.isErrorWithCode,
   isFunction = _lib$util.isFunction,
+  isUndefinedOrNull = _lib$util.isUndefinedOrNull,
   makeArray = _lib$util.makeArray,
   makeAsync = _lib$util.makeAsync,
   map = _lib$util.map,
+  mapObject = _lib$util.mapObject,
   mapRemove = _lib$util.mapRemove,
   noop = _lib$util.noop,
   pick = _lib$util.pick,
   pipe = _lib$util.pipe,
   reject = _lib$util.reject,
+  repeat = _lib$util.repeat,
   resolve = _lib$util.resolve,
   resolveAll = _lib$util.resolveAll,
+  retryable = _lib$util.retryable,
+  throwIfAborted = _lib$util.throwIfAborted,
   _throws = _lib$util["throws"];
 
 ;// ./|umd|/zeta-dom/dom.js
@@ -164,22 +176,24 @@ var userNotLoggedIn = 'brew/auth-user-not-logged-in';
 var passKeyUnavailable = 'brew/auth-passkey-unavailable';
 var missingCredential = 'brew/auth-missing-credential';
 var invalidCredential = 'brew/auth-invalid-credential';
+var challengeRequired = 'brew/auth-challenge-required';
 ;// ./src/extension.js
 
 
 
 
 
+
 var CACHE_KEY = 'brew.auth';
-/* harmony default export */ var extension = (addExtension('auth', ['router'], function (app, options) {
+/* harmony default export */ var extension = (addExtension('auth', ['?router'], function (app, options) {
   var setUser = defineObservableProperty(app, 'user', null, true);
   var providers = makeArray(options.providers || options.provider);
   var providerParams = {
     interaction: options.interaction || 'redirect'
   };
   var contexts = new Map();
-  var redirectUri = combinePath(location.origin, app.toHref('/'));
-  var sessionCache = app.cache;
+  var redirectUri = combinePath(location.origin, app.route ? app.toHref('/') : location.pathname);
+  var sessionCache = app.cache || createObjectStorage(sessionStorage, 'brew.auth');
   var previousState = sessionCache.get(CACHE_KEY) || {};
   var isNewSession = performance.navigation.type === 0;
   var refreshLocks = {};
@@ -190,6 +204,7 @@ var CACHE_KEY = 'brew.auth';
     var context = {
       interaction: providerParams.interaction,
       redirectUri: redirectUri,
+      challenge: function challenge() {},
       revokeSession: function revokeSession(accountId) {
         if (currentProvider === provider && (!accountId || currentResult.accountId === accountId)) {
           currentProvider = null;
@@ -251,23 +266,26 @@ var CACHE_KEY = 'brew.auth';
       accountId: currentResult.accountId
     };
   }
-  function setSessionState(provider, returnPath) {
+  function setSessionState(provider, state, returnPath) {
     var before = getCacheableState();
     sessionCache.set(CACHE_KEY, {
       provider: provider,
+      state: state,
       returnPath: returnPath,
       before: before
     });
   }
   function popSessionState() {
     var state = mapRemove(sessionCache, CACHE_KEY) || {};
-    if (state.returnPath && state.provider === (currentProvider ? currentProvider.key : '')) {
+    var isCurrent = state.provider === (currentProvider ? currentProvider.key : '');
+    if (isCurrent && state.returnPath && app.navigate) {
       catchAsync(app.navigate(state.returnPath));
     }
     if (currentProvider) {
       sessionCache.set(CACHE_KEY, getCacheableState());
       currentProvider.setActiveAccount(currentResult, contexts.get(currentProvider));
     }
+    return isCurrent && !isUndefinedOrNull(state.state) ? state.state : null;
   }
   function setCurrentResult(provider, result) {
     var previous = getCacheableState() || previousState.before || previousState;
@@ -305,10 +323,11 @@ var CACHE_KEY = 'brew.auth';
     var previous = setCurrentResult(provider, result);
     var resumed = previous.provider === provider.key && previous.accountId === result.accountId || !previous.provider && app.readyState !== 'ready';
     return resolveUser(provider, result).then(function (user) {
+      var state = popSessionState();
       setUser(user);
-      popSessionState();
       app.emit('login', {
         user: user,
+        state: state,
         sessionResumed: resumed,
         sessionChanged: !resumed && !!previous.accountId,
         interaction: app.readyState === 'ready' ? 'user' : previousState.returnPath ? 'redirect' : 'none'
@@ -329,10 +348,11 @@ var CACHE_KEY = 'brew.auth';
     var user = app.user;
     setCurrentResult(null, null);
     setUser(null);
-    popSessionState();
+    var state = popSessionState();
     if (user || previousState.accountId) {
       app.emit('logout', {
         user: user,
+        state: state,
         interaction: previousProvider ? 'user' : previousState.returnPath ? 'redirect' : 'none'
       });
     }
@@ -351,12 +371,40 @@ var CACHE_KEY = 'brew.auth';
     }
     return refreshLocks[key];
   }
-  function callProvider(provider, method, params, callback) {
-    var promise = callProviderGuarded(provider[method], provider, extend({}, providerParams, params), contexts.get(provider));
+  function callProvider(provider, method, params, context) {
+    var promise = callProviderGuarded(provider[method], provider, extend({}, providerParams, params), context || contexts.get(provider));
     promise["catch"](function () {
       sessionCache.set(CACHE_KEY, getCacheableState());
     });
-    return promise.then(callback);
+    return promise;
+  }
+  function runWithChallenge(provider, params, callback) {
+    return new Promise(function (resolve, reject) {
+      var sendResult = resolve;
+      var challenge = function challenge(_challenge, value, callback) {
+        return new Promise(function (resolve, reject) {
+          if (params.silent) {
+            return reject(errorWithCode(challengeRequired));
+          }
+          callback = retryable(callback || pipe, resolve);
+          sendResult({
+            challenge: _challenge,
+            value: value,
+            continueWith: function continueWith(response) {
+              return new Promise(function (resolve, reject) {
+                sendResult = resolve;
+                callback(response).then(null, reject);
+              });
+            }
+          });
+        });
+      };
+      callback(extend({}, contexts.get(provider), {
+        challenge: challenge
+      })).then(function (result) {
+        sendResult(result);
+      }, reject);
+    });
   }
   app.define({
     getAllAccounts: function getAllAccounts() {
@@ -417,8 +465,10 @@ var CACHE_KEY = 'brew.auth';
           if (resolved && result) {
             return handleLogin(provider, result);
           }
-          setSessionState(provider.key, params.returnPath || options.postLoginPath || app.path);
-          return callProvider(provider, 'login', pick(params, ['accountId', 'loginHint', 'password']), handleLogin.bind(0, provider));
+          setSessionState(provider.key, params.state, params.returnPath || options.postLoginPath || app.path || location.pathname);
+          return runWithChallenge(provider, params, function (context) {
+            return callProvider(provider, 'login', pick(params, ['accountId', 'loginHint', 'password', 'passkey']), context).then(handleLogin.bind(0, provider));
+          });
         });
       });
     },
@@ -427,8 +477,8 @@ var CACHE_KEY = 'brew.auth';
         return resolve(handleLogout());
       }
       params = params || {};
-      setSessionState('', params.returnPath || options.postLogoutPath || app.path);
-      return callProvider(currentProvider, 'logout', pick(currentResult, ['accountId']), handleLogout);
+      setSessionState('', params.state, params.returnPath || options.postLogoutPath || app.path || location.pathname);
+      return callProvider(currentProvider, 'logout', pick(currentResult, ['accountId'])).then(handleLogout);
     }
   });
   app.beforeInit(function () {
@@ -649,7 +699,90 @@ each('get post put patch delete', function (i, v) {
   });
 });
 /* harmony default export */ var util_JSONClient = (JSONClient);
+;// ./src/util/passkey.js
+
+
+var PublicKeyCredential = window.PublicKeyCredential || function () {};
+var parseCreationOptionsFromJSON = PublicKeyCredential.parseCreationOptionsFromJSON || function (options) {
+  return extend({}, options, {
+    challenge: base64urlToBuffer(options.challenge),
+    user: extend({}, options.user, {
+      id: base64urlToBuffer(options.user.id)
+    }),
+    excludeCredentials: (options.excludeCredentials || []).map(function (credential) {
+      return extend({}, credential, {
+        id: base64urlToBuffer(credential.id)
+      });
+    })
+  });
+};
+var parseRequestOptionsFromJSON = PublicKeyCredential.parseRequestOptionsFromJSON || function (options) {
+  return extend({}, options, {
+    challenge: base64urlToBuffer(options.challenge),
+    allowCredentials: (options.allowCredentials || []).map(function (credential) {
+      return extend({}, credential, {
+        id: base64urlToBuffer(credential.id)
+      });
+    })
+  });
+};
+var credentialToJSON = PublicKeyCredential.prototype.toJSON || function () {
+  var credential = this;
+  return {
+    id: credential.id,
+    type: credential.type,
+    rawId: bufferToBase64url(credential.rawId),
+    response: credentialResponseToJSON(credential.response),
+    clientExtensionResults: credential.getClientExtensionResults ? credential.getClientExtensionResults() : {}
+  };
+};
+function bufferToBase64url(buffer) {
+  var bytes = new Uint8Array(buffer);
+  var binary = String.fromCharCode.apply(null, bytes);
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+}
+function base64urlToBuffer(value) {
+  var padding = value.length % 4;
+  var base64 = value.replace(/-/g, '+').replace(/_/g, '/') + (padding ? repeat('=', 4 - padding) : '');
+  var binary = atob(base64);
+  var bytes = new Uint8Array(binary.length);
+  for (var i = 0; i < binary.length; i += 1) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes.buffer;
+}
+function credentialResponseToJSON(response) {
+  var result = mapObject(response, function (v) {
+    return is(v, ArrayBuffer) ? bufferToBase64url(v) : v;
+  });
+  return extend(result, response.getTransports && {
+    transports: response.getTransports()
+  });
+}
+function handleCredentialResult(credential) {
+  if (!credential) {
+    throw errorWithCode(passKeyUnavailable, 'Browser does not support public-key credentials');
+  }
+  return credentialToJSON.call(credential);
+}
+function wrapError(signal, error) {
+  throwIfAborted(signal);
+  throw errorWithCode(passKeyUnavailable, error);
+}
+function createPasskey(options, signal) {
+  return navigator.credentials.create({
+    publicKey: parseCreationOptionsFromJSON(options),
+    signal: signal
+  }).then(handleCredentialResult, wrapError.bind(0, signal));
+}
+function requestPasskey(options, signal) {
+  return navigator.credentials.get({
+    publicKey: parseRequestOptionsFromJSON(options),
+    signal: signal
+  }).then(handleCredentialResult, wrapError.bind(0, signal));
+}
 ;// ./src/util.js
+
 
 
 ;// ./src/index.js

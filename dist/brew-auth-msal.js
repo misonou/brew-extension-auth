@@ -1,4 +1,4 @@
-/*! @misonou/brew-extension-auth v0.6.2 | (c) misonou | https://misonou.pages.dev/brew-extension-auth */
+/*! @misonou/brew-extension-auth v0.7.0 | (c) misonou | https://misonou.pages.dev/brew-extension-auth */
 (function webpackUniversalModuleDefinition(root, factory) {
 	if(typeof exports === 'object' && typeof module === 'object')
 		module.exports = factory(require("@azure/msal-browser"), require("brew-js"), require("zeta-dom"));
@@ -117,6 +117,7 @@ var userNotLoggedIn = 'brew/auth-user-not-logged-in';
 var passKeyUnavailable = 'brew/auth-passkey-unavailable';
 var missingCredential = 'brew/auth-missing-credential';
 var invalidCredential = 'brew/auth-invalid-credential';
+var challengeRequired = 'brew/auth-challenge-required';
 ;// ./src/msal.js
 
 
